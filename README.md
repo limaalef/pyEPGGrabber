@@ -52,8 +52,8 @@ target_channels:
   - canal2
   - canal3
 
-api_level_1: data.programs
-api_level_2: schedule.items
+api_level_1: data.programs   # Caminho do JSON até o nome do canal, caso esteja nível acima
+api_level_2: schedule.items  # Caminho do JSON até a lista de programas
 
 channel: channel.slug
 program_title: title

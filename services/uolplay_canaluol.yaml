@@ -1,0 +1,31 @@
+api_url: 'https://api.mais.uol.com.br/apiuol/v5/schedule?collection_id=1241&date_begin=DIA/MES/ANO&days=QTDDIAS'
+
+service_name: "Canal UOL"
+
+headers:
+  Accept: "*/*"
+  User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+
+target_channels: ~
+
+api_level_1: schedulerList
+api_level_2: streamProgram
+
+channel: ~
+program_title: title
+subtitle: ~
+description: description
+start_time: dat_start
+end_time: dat_end
+live: ~
+duration: ~
+rating: rating
+rating_criteria: ~
+rating_auto: ~
+season: ~
+episode: ~
+tags: ~
+genre: ~
+
+timezone: "America/Sao_Paulo"
+no_loop: true
