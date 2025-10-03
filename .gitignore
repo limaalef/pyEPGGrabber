@@ -2,3 +2,4 @@ services/claro.yaml
 services/globo.yaml
 services/vivoplay.yaml
 services/globoid.yaml
+/__pycache__

@@ -13,7 +13,7 @@ class EPGConfig:
 
     def __init__(self, config_dir: Path):
         self.config_dir = Path(config_dir)
-        self.services_dir = self.config_dir / "servicos"
+        self.services_dir = self.config_dir / "services"
         self.mappings_file = self.config_dir / "mappings.yaml"
 
         # Cache de configurações para evitar leituras repetidas

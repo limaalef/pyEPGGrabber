@@ -16,10 +16,10 @@ pyEPGGrabber/
 ├── epg_fetcher.py         # Requisições às APIs
 ├── epg_processor.py       # Processamento de dados
 ├── epg_writer.py          # Geração XML e logs
-├── servicos/              # Configurações de APIs
+├── services/              # Configurações de APIs
 │   ├── maissbt.yaml
-│   ├── uolpla_canaluol.yaml
-│   ├── uolpla_newbrasil.yaml
+│   ├── uolplay_canaluol.yaml
+│   ├── uolplay_newbrasil.yaml
 └── mappings.json         # Dicionários de mapeamento
 ```
 
@@ -34,7 +34,7 @@ pip install requests
 
 ## Configuração
 
-### 1. Arquivo de Serviço (servicos/*.yaml)
+### 1. Arquivo de Serviço (services/*.yaml)
 
 Exemplo de configuração:
 
@@ -75,6 +75,7 @@ timezone: "America/Sao_Paulo"
 ```
 
 **Variáveis disponíveis na URL:**
+- `DIA-MES-ANO` → substituído por data no formato DD-MM-YYYY
 - `ANO-MES-DIA` → substituído por data no formato YYYY-MM-DD
 - `QTDHORAS` → total de horas (dias × 24)
 - `QTDDIAS` → total de dias
@@ -193,7 +194,7 @@ schtasks /create /tn "EPG Grabber" /tr "python C:\caminho\para\epg.py -d 7" /sc 
 ## Solução de Problemas
 
 ### Erro: "Serviço não encontrado"
-- Verifique se o arquivo `.yaml` existe em `servicos/`
+- Verifique se o arquivo `.yaml` existe em `services/`
 - Nome do serviço = nome do arquivo sem extensão
 
 ### Erro: "Encoding inválido"
@@ -213,7 +214,7 @@ schtasks /create /tn "EPG Grabber" /tr "python C:\caminho\para\epg.py -d 7" /sc 
 
 Para adicionar novos serviços:
 
-1. Crie arquivo em `servicos/nome_servico.yaml`
+1. Crie arquivo em `services/nome_servico.yaml`
 2. Configure campos conforme documentação da API
 3. Adicione headers se necessário
 4. Teste: `python epg.py -s nome_servico`
