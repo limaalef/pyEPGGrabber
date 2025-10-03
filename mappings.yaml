@@ -1,0 +1,84 @@
+# Arquivo de mapeamentos para EPG Grabber
+# Salvar como: mappings.yaml
+
+competitions:
+  competitions:
+  Amistoso De Futebol: [Amistoso, "football/soccer"]
+  Amistoso Internacional De Basquete: [Amistoso Internacional de Basquete, "sports (general)"]
+  Amistoso Internacional De Futsal: [Amistoso de Futsal, "team sports"]
+  Amistoso Internacional De Futsal Feminino: [Amistoso de Futsal Feminino, "team sports"]
+  Amistoso Internacional De Futebol: [Amistoso Internacional, "football/soccer"]
+  Amistoso Internacional De Futebol Feminino: [Amistoso Futebol Feminino, "football/soccer"]
+  Amistoso Internacional Feminino De Futebol: [Amistoso Futebol Feminino, "football/soccer"]
+  Amistoso Internacional Masculini De Futebol: [Amistoso Internacional, "football/soccer"]
+  Arena Cross: [Arena Cross, "sports (general)"]
+  Arena Freestyle: [Arena Freestyle, sports (general)]
+  Baú Do Esporte: [Baú do Esporte, "sports (general)"]
+  Boxe: [Boxe, "sports (general)"]
+  Boxe Internacional: [Boxe Internacional, "sports (general)"]
+  Cblol: [CBLOL, "sports (general)"]
+
+programs:
+  Troca De Passes: Troca de Passes
+  Giro Da Rodada: Giro da Rodada
+  Expresso Da Bola: Expresso da Bola
+  Caminho Do Milhão: Caminho do Milhão
+  Faixa Digital: Faixa Digital
+  Senhora Do Destino: Senhora do Destino
+  A Cara Do Pai: A Cara do Pai
+  Malhação - 2010: Malhação 2010 - 2011
+  Tapas E Beijos: Tapas e Beijos
+  O Sexo Dos Anjos: O Sexo dos Anjos
+  História De Amor: História de Amor
+  Escolinha Do Professor Raimundo: Escolinha do Professor Raimundo
+  Cair Em Tentação: Cair em Tentação
+  Dois Em Cena: Dois em Cena
+  Escrito Nas Estrelas: Escrito nas Estrelas
+  TVZ: TVZ
+  O Dono Do Lar: O Dono do Bar
+  Bar Do Gogó: Bar do Gogó
+  Central De Bicos: Central de Bicos
+  Vai Que Cola: Vai que Cola
+  Tô De Graça: Tô de Graça
+  Todo Mundo Odeia O Chris: Todo Mundo Odeia o Chris
+  Especial Campeonato Espanhol: LaLiga Highlights
+  Especial Campeonato Italiano: Serie A Full Impact
+
+genres:
+  Jornalismo: "news/current affairs (general)"
+  Jornalístico: "news/current affairs (general)"
+  Drama: "movie/drama (general)"
+  Variedade: "variety show"
+  Variedades: "variety show"
+  Entrevista: "talk show"
+  Filme: "film/cinema"
+  Sessão de Filme: "film/cinema"
+  Esporte: "sports (general)"
+  Esportes: "sports (general)"
+  Esportivo: "sports (general)"
+  Novela: "soap/melodrama/folkloric"
+  Entretenimento: "variety show"
+  Entretenimeto: "variety show"
+  Auditório: "show/game show (general)"
+  Reality show: "show/game show (general)"
+  Game show: "game show/quiz/contest"
+  Musical: "music/ballet/dance"
+  Talk Show: "talk show"
+  Comédia: comedy
+  Humorístico: comedy
+  Desenho: "cartoons/puppets"
+  Infantil: "entertainment programmes for 6 to 14"
+  Educativo: "informational/educational/school programmes"
+  Animação: "cartoons/puppets"
+  Documentário: documentary
+  Séries: "movie/drama (general)"
+  Série: "movie/drama (general)"
+  Espetáculo: "serious music/classical music"
+  Ficção científica: "science fiction/fantasy/horror"
+  Aventura: "adventure/western/war"
+  Ação: "detective/thriller"
+  Religioso: religion
+  Culinária: cooking
+  Reality Culinário: cooking
+  Infomercial: "advertisement/shopping"
+  Filme erótico: "adult movie/drama"
