@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Brasil EPG Grabber - Versão Python 1.0.0
+Brasil EPG Grabber - Versão Python 1.1.0
 Conversor de EPG de múltiplas fontes para formato XMLTV
 """
 
@@ -29,7 +29,13 @@ class EPGGrabber:
         self.processor = EPGProcessor(self.config)
         self.writer = EPGWriter(self.config)
 
-    def grab_epg(self, days: int = 0, services: list = None, channel_id: int = None, output: str = None):
+    def grab_epg(
+        self,
+        days: int = 0,
+        services: list = None,
+        channel_id: int = None,
+        output: str = None,
+    ):
         """
         Captura dados de EPG
 
@@ -57,34 +63,62 @@ class EPGGrabber:
             else:
                 day_range = range(days + 1)
 
-            # Captura dados para cada dia
-            for day in day_range:
-                ### self.logger.log_progress(f"Baixando: {service_name} - Dia +{day}")
-                try:
-                    # Faz requisição à API
-                    data = self.fetcher.fetch(service_config, day, channel_id)
-                    
-                    # Extrai programas dos dados
-                    programs = self.fetcher.extract_programs(data, service_config)
-                    
-                    # Processa cada programa
-                    for program in programs:
-                        processed = self.processor.process_program(
-                            program, service_config
-                        )
-                        if processed:
-                            all_programs.append(processed)
+            # Cria lista de IDs
+            has_placeholder = "LISTACANAIS" in service_config.get("api_url", "")
+            get_list_to_url = service_config.get("list_url", False) and has_placeholder
 
-                except Exception as e:
-                    ### self.logger.log_error(f"Erro ao processar {service_name}: {str(e)}")
-                    continue
+            if get_list_to_url:
+                channel_list = [{"id": "0"}]
+                channel_list_url = service_config.get("channels")
+            else:
+                channel_list_url = None
+                channel_list = (
+                [{"id": channel_id}] if channel_id else
+                service_config.get("channels") or [{"id": "0"}]
+            )
+        
+            # Navega pela lista de IDs
+            for each_channel in channel_list:
+                list_id_channel = channel_list_url if get_list_to_url else each_channel.get("id")
+                
+                # Captura dados para cada dia
+                for day in day_range:
+                    ### self.logger.log_progress(f"Baixando: {service_name} - Dia +{day}")
+                    try:
+                        # Faz requisição à API
+                        data = self.fetcher.fetch(
+                            service_config, day, list_id_channel
+                        )
+
+                        # Extrai programas dos dados
+                        programs = self.fetcher.extract_programs(
+                            data, service_config, each_channel.get("name")
+                        )
+
+                        # Processa cada programa
+                        for program in programs:
+                            processed = self.processor.process_program(
+                                program, service_config
+                            )
+                            if processed:
+                                all_programs.append(processed)
+
+                    except Exception as e:
+                        ### self.logger.log_error(f"Erro ao processar {service_name}: {str(e)}")
+                        continue
 
         # Ordena programas por canal e horário
         all_programs.sort(key=lambda x: (x["channel"], x["start_time"]))
 
         # Gera saída conforme modo escolhido
-        name = service_config.get('name').replace(' ', '_').lower() if len(services) <= 1 else None
-        output_path = self.writer.write_xml(all_programs, service_name = name, output_path = output)
+        name = (
+            service_config.get("name").replace(" ", "_").lower()
+            if len(services) <= 1
+            else None
+        )
+        output_path = self.writer.write_xml(
+            all_programs, service_name=name, output_path=output
+        )
         ### self.logger.end_log(len(all_programs))
         return output_path
 
@@ -140,7 +174,10 @@ def main():
     # Executa captura
     try:
         result = grabber.grab_epg(
-            days=args.days, services=services, channel_id=args.channel, output=args.output
+            days=args.days,
+            services=services,
+            channel_id=args.channel,
+            output=args.output,
         )
         print(result)
         if result:

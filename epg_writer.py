@@ -21,16 +21,20 @@ class EPGWriter:
 
         Args:
             programs: Lista de programas processados
+            service_name: Nome do serviço
             output_path: Caminho de saída (opcional)
 
         Returns:
             Caminho do arquivo gerado
         """
-        filename = f"{service_name}_epg.xml" if service_name else "epg.xml"
+        if not output_path:
+            filename = f"{service_name}_epg.xml" if service_name else "epg.xml"
 
-        output_path = Path(output_path) if output_path else Path(__file__).parent
-        output_path = output_path / filename
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path = Path(__file__).parent
+            output_path = output_path / filename
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            output_path = Path(output_path)
 
         # Cria elemento raiz
         root = ET.Element("tv")

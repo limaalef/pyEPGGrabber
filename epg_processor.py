@@ -27,7 +27,7 @@ class EPGProcessor:
         Returns:
             Dicionário com dados processados ou None
         """
-        channel = raw_program.get("channel", "").lower()
+        channel = raw_program.get("channel", "")
         
         # Inicializa dados processados
         processed = {
@@ -93,6 +93,14 @@ class EPGProcessor:
             "cï¿½o": "cão",
             "sï¿½o": "são",
             "nï¿½vel": "nível",
+            "rï¿½o": "rão",
+            "rï¿½es": "rães",
+            "eï¿½n": "eún",
+            "nï¿½s": "nês",
+            "mï¿½r": "mér",
+            "lï¿½s": "lês",
+            "sï¿½e": "sõe",
+            "aï¿½s": "aês",
         }
 
         for field in ["title", "subtitle", "description"]:
@@ -208,7 +216,7 @@ class EPGProcessor:
     def _detect_live_status(self, prog: Dict) -> Dict:
         """Detecta se programa é ao vivo, inédito ou reprise"""
         # Ao vivo
-        live_patterns = [r"- Ao Vivo", r"- VIVO", r"AO VIVO", r"\bLive\b"]
+        live_patterns = [r"- Ao Vivo", r"- VIVO", r"AO VIVO$"]
 
         for pattern in live_patterns:
             if prog.get("title") and re.search(pattern, prog["title"], re.IGNORECASE):

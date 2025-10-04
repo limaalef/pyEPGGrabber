@@ -3,3 +3,4 @@ services/globo.yaml
 services/vivoplay.yaml
 services/globoid.yaml
 /__pycache__
+services/globo_inter.yaml

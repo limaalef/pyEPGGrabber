@@ -74,6 +74,7 @@ class EPGConfig:
             "name": raw_config.get("service_name"),
             "api_url": raw_config.get("api_url"),
             "headers": raw_config.get("headers", {}),
+            "channels": raw_config.get("channels", []),
             "target_channels": self._normalize_list(raw_config.get("target_channels")),
             "api_level_1": self._normalize_path(raw_config.get("api_level_1")),
             "api_level_2": self._normalize_path(raw_config.get("api_level_2")),
@@ -94,6 +95,7 @@ class EPGConfig:
             "genre": self._normalize_path(raw_config.get("genre")),
             "timezone": raw_config.get("timezone", "+00:00"),
             "no_loop": raw_config.get("no_loop", False),
+            "list_url": raw_config.get("use_list_in_url", False)
         }
 
         # Adiciona ao cache
@@ -128,6 +130,11 @@ class EPGConfig:
                     result.append(str(item))
             return [v.strip() for v in result if v.strip()]
         return []
+
+    def get_service_channels(self, service_name: str) -> List[Dict]:
+        """Retorna lista de canais configurados para um serviço"""
+        config = self.load_service_config(service_name)
+        return config.get("channels", [])
 
     def get_competition_mapping(
         self, competition_name: str, channel: str = None

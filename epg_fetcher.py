@@ -5,7 +5,7 @@ Módulo de requisições às APIs de EPG
 import requests
 import json
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 import pytz
 
 
@@ -43,7 +43,7 @@ class EPGFetcher:
             raise Exception(f"Erro ao acessar API: {str(e)}")
 
     def _build_url(
-        self, url_template: str, days: int, channel_id: Optional[int]
+        self, url_template: str, days: int, channel_id: Optional[Union[int, List]]
     ) -> str:
         """Constrói URL com variáveis substituídas"""
         date = datetime.now() + timedelta(days=days)
@@ -65,15 +65,23 @@ class EPGFetcher:
         if channel_id:
             url = url.replace("IDCANAL", str(channel_id))
 
+        if isinstance(channel_id, list) and "LISTACANAIS" in url:
+            # Junta IDs com ponto e vírgula
+            id_list_str = ",".join(map(str,[item["id"] for item in channel_id]))
+            url = url.replace("LISTACANAIS", id_list_str)
+
         return url
 
-    def extract_programs(self, data: Dict, service_config: Dict) -> List[Dict]:
+    def extract_programs(
+        self, data: Dict, service_config: Dict, channel_name: str = None
+    ) -> List[Dict]:
         """
         Extrai lista de programas dos dados da API
 
         Args:
             data: Dados JSON da API
             service_config: Configuração do serviço
+            channel_name: Nome do canal
 
         Returns:
             Lista de programas
@@ -98,6 +106,9 @@ class EPGFetcher:
             channel = self._extract_field(item, service_config["channel"])
             if not channel:
                 channel = service_config.get("name")
+
+            if channel_name:
+                channel = channel_name
 
             # Verifica se canal deve ser incluído
             target_channels = service_config.get("target_channels", [])

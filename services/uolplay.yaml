@@ -1,0 +1,88 @@
+api_url: 'https://api.mais.uol.com.br/apiuol/v5/schedule?collection_id=IDCANAL&date_begin=DIA/MES/ANO&days=QTDDIAS'
+
+service_name: "UOL Play"
+
+headers:
+  Accept: "*/*"
+  User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+
+channels:
+  - id: 4775
+    name: Canal UOL
+  - id: 4524
+    # name: Universal Reality
+  - id: 4523
+    # name: Universal Premiere
+  - id: 4522
+    # name: DreamWorks
+  - id: 4521
+    # name: E!
+  - id: 3917
+    # name: Band
+  - id: 3916
+    # name: New Brasil
+  - id: 3915
+    # name: Sabor e Arte
+  - id: 2742
+    # name: A&E
+  - id: 2534
+    # name: Sony Movies
+  - id: 1250
+    # name: Terraviva
+  - id: 1251
+    # name: Warner Channel
+  - id: 1249
+    # name: Sony Channel
+  - id: 1248
+    # name: Paramount
+  - id: 1247
+    # name: Nickelodeon
+  - id: 1245
+    # name: MTV Live
+  - id: 1244
+    # name: MTV
+  - id: 1246
+    # name: Nick Jr
+  - id: 1243
+    # name: Lifetime
+  - id: 1242
+    # name: History
+  - id: 1241
+    # name: H2
+  - id: 1239
+    # name: Comedy Central
+  - id: 1238
+    # name: Band Sports
+  - id: 1237
+    # name: Band News
+  - id: 1236
+    # name: AXN
+  - id: 1235
+    # name: Arte 1
+  - id: 1233
+    # name: Agro+
+
+target_channels: ~
+
+api_level_1: 
+api_level_2: schedulerList
+
+channel: stream.channel_title
+program_title: streamProgram.title
+subtitle: ~
+description: streamProgram.description
+start_time: streamProgram.dat_start
+end_time: streamProgram.dat_end
+live: ~
+duration: ~
+rating: streamProgram.rating
+rating_criteria: ~
+rating_auto: ~
+season: ~
+episode: ~
+tags: ~
+genre: ~
+
+timezone: "America/Sao_Paulo"
+no_loop: true
+use_list_in_url: false

@@ -18,16 +18,15 @@ pyEPGGrabber/
 ├── epg_writer.py          # Geração XML e logs
 ├── services/              # Configurações de APIs
 │   ├── maissbt.yaml
-│   ├── uolplay_canaluol.yaml
-│   ├── uolplay_newbrasil.yaml
-└── mappings.json         # Dicionários de mapeamento
+│   ├── uolplay.yaml
+└── mappings.yaml         # Dicionários de mapeamento
 ```
 
 ## Instalação
 
 ```bash
 # Instalar dependências
-pip install requests
+pip install -r requirements.txt
 
 # Clonar ou copiar os arquivos para um diretório
 ```
@@ -39,7 +38,7 @@ pip install requests
 Exemplo de configuração:
 
 ```
-api_url: https://api.exemplo.com/epg?date=ANO-MES-DIA
+api_url: https://api.exemplo.com/epg?date=ANO-MES-DIA&id=IDCANAL
 
 service_name: MeuServico
 
@@ -47,7 +46,13 @@ headers:
   Accept: "*/*"
   User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
 
-target_channels: 
+channels:                    # Opcional: Utilize esta opção se API retornar um canal por requisição ou para listar os IDs na URL (setar true em 'use_list_in_url')
+  - id: 123                  # ID que será inserido na URL no local da variável 'IDCANAL' ou como lista na variável 'LISTACANAIS'
+    name: Canal 1            # Opcional: Se a API não retornar o nome do canal
+  - id: 456
+    name: Canal 2
+
+target_channels:             # Opcional: Se a API retornar todos os canais disponíveis, opção para filtrar os canais desejados
   - canal1
   - canal2
   - canal3
@@ -72,18 +77,21 @@ tags: tags
 genre: macros.genre
 
 timezone: "America/Sao_Paulo"
+no_loop: false              # Ativar esta opção caso a API não permita definir uma quantidade de dias ou data
+use_list_in_url: true       # Ao ativar esta opção a lista de canais será integrada a URL no local da variável "LISTACANAIS": canal1,canal2...
 ```
 
 **Variáveis disponíveis na URL:**
-- `DIA-MES-ANO` → substituído por data no formato DD-MM-YYYY
 - `ANO-MES-DIA` → substituído por data no formato YYYY-MM-DD
+- `DIA-MES-ANO` → substituído por data no formato DD-MM-YYYY
+- `LISTACANAIS` → substituído por lista de canais definida em channels
 - `QTDHORAS` → total de horas (dias × 24)
 - `QTDDIAS` → total de dias
 - `UNIXTIMESTART` → timestamp Unix do início do dia
 - `UNIXTIMEEND` → timestamp Unix do fim do dia
 - `IDCANAL` → ID do canal (quando fornecido)
 
-### 2. Mapeamentos (mappings.json)
+### 2. Mapeamentos (mappings.yaml)
 
 Já fornecido com dicionários de:
 - Competições esportivas
@@ -105,7 +113,7 @@ python epg.py -d 7
 python epg.py -s maissbt -d 3
 
 # Especificar arquivo de saída
-python epg.py -o /caminho/para/epg.xml
+python epg.py -o "/caminho/para/epg.xml"
 ```
 
 ### Parâmetros
@@ -131,8 +139,7 @@ print(f"XML gerado: {xml_path}")
 # Usar serviço específico
 programs = grabber.grab_epg(
     days=1,
-    services=['globoplay'],
-    output_mode='print'
+    services=['globoplay']
 )
 ```
 
@@ -221,7 +228,7 @@ Para adicionar novos serviços:
 
 Para adicionar mapeamentos:
 
-1. Edite `mappings.json`
+1. Edite `mappings.yaml`
 2. Adicione entradas em `competitions`, `programs` ou `genres`
 3. Formato: `"Nome Original": ["Nome Formatado", "gênero"]`
 
