@@ -1,6 +1,8 @@
+/__pycache__
+*.xml
 services/claro.yaml
 services/globo.yaml
-services/vivoplay.yaml
 services/globoid.yaml
-/__pycache__
 services/globo_inter.yaml
+services/vivoplay.yaml
+log_epg.log

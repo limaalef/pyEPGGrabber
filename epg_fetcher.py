@@ -46,7 +46,11 @@ class EPGFetcher:
         self, url_template: str, days: int, channel_id: Optional[Union[int, List]]
     ) -> str:
         """Constrói URL com variáveis substituídas"""
-        date = datetime.now() + timedelta(days=days)
+        
+        if "QTDDIAS" in url_template:
+            date = datetime.now()
+        else:
+            date = datetime.now() + timedelta(days=days)
 
         # Substitui variáveis
         url = url_template
@@ -69,7 +73,7 @@ class EPGFetcher:
             # Junta IDs com ponto e vírgula
             id_list_str = ",".join(map(str,[item["id"] for item in channel_id]))
             url = url.replace("LISTACANAIS", id_list_str)
-
+        
         return url
 
     def extract_programs(
