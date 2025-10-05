@@ -4,5 +4,10 @@ services/claro.yaml
 services/globo.yaml
 services/globoid.yaml
 services/globo_inter.yaml
+services/target_vivoplay.yaml
+services/target_uolplay.yaml
+services/target_globo.yaml
+services/target_claro.yaml
+services/local_xsports.yaml
 services/vivoplay.yaml
 log_epg.log

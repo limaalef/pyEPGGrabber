@@ -17,9 +17,11 @@ pyEPGGrabber/
 ├── epg_processor.py       # Processamento de dados
 ├── epg_writer.py          # Geração XML e logs
 ├── services/              # Configurações de APIs
+│   ├── dvbviewer.yaml
 │   ├── maissbt.yaml
+│   ├── plutotv.yaml       # Necessário inserir o token no arquivo
 │   ├── uolplay.yaml
-└── mappings.yaml         # Dicionários de mapeamento
+└── mappings.yaml          # Dicionários de mapeamento
 ```
 
 ## Instalação
@@ -111,6 +113,9 @@ python epg.py -d 7
 
 # Usar serviço específico
 python epg.py -s maissbt -d 3
+
+# Usar vários serviços
+python epg.py -s globo maissbt band plutotv -d 1
 
 # Especificar arquivo de saída
 python epg.py -o "/caminho/para/epg.xml"
