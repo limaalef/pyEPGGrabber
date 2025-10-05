@@ -15,7 +15,9 @@ class EPGWriter:
     def __init__(self, config):
         self.config = config
 
-    def write_xml(self, programs: List[Dict], service_name: str = None, output_path: str = None) -> str:
+    def write_xml(
+        self, programs: List[Dict], service_name: str = None, output_path: str = None
+    ) -> str:
         """
         Escreve arquivo XML com programas
 
@@ -118,11 +120,16 @@ class EPGWriter:
                 value.text = f"[{prog['rating']}]"
 
             # Flags
-            if prog.get("rerun"):
+            if prog.get("rerun") or prog.get("live") == "VT":
                 ET.SubElement(programme, "previously-shown")
             elif prog.get("premiere"):
                 ET.SubElement(programme, "premiere")
-            elif prog.get("live"):
+            elif (
+                prog.get("live") == True
+                or prog.get("live") == "Estreia"
+                or prog.get("live") == "Inédito"
+                or prog.get("live") == "Destaques + Estreia"
+            ):
                 ET.SubElement(programme, "new")
 
         # Formata e salva

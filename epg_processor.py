@@ -28,7 +28,7 @@ class EPGProcessor:
             Dicionário com dados processados ou None
         """
         channel = raw_program.get("channel", "")
-        
+
         # Inicializa dados processados
         processed = {
             "channel": channel,
@@ -53,10 +53,7 @@ class EPGProcessor:
         # Se não tem título, pula
         if not processed["title"]:
             processed["title"] = f"Programação {channel}"
-        
-        # Limpa encoding problemático
-        processed = self._fix_encoding(processed)
-        
+
         # Extrai informações do título/subtítulo
         processed = self._extract_date(processed)
         processed = self._extract_season_episode(processed)
@@ -80,37 +77,8 @@ class EPGProcessor:
 
         # Padroniza a saida
         processed = self.process_output(processed)
-        
+
         return processed
-
-    def _fix_encoding(self, prog: Dict) -> Dict:
-        """Corrige problemas de encoding"""
-        fixes = {
-            "tï¿½ri": "tóri",
-            "viï¿½r": "viár",
-            "tï¿½c": "téc",
-            "ï¿½ï¿½o": "ção",
-            "cï¿½o": "cão",
-            "sï¿½o": "são",
-            "nï¿½vel": "nível",
-            "rï¿½o": "rão",
-            "rï¿½es": "rães",
-            "eï¿½n": "eún",
-            "nï¿½s": "nês",
-            "mï¿½r": "mér",
-            "lï¿½s": "lês",
-            "sï¿½e": "sõe",
-            "aï¿½s": "aês",
-        }
-
-        for field in ["title", "subtitle", "description"]:
-            if prog.get(field):
-                text = prog[field]
-                for old, new in fixes.items():
-                    text = text.replace(old, new)
-                prog[field] = text
-
-        return prog
 
     def _extract_date(self, prog: Dict) -> Dict:
         """Extrai datas do título/subtítulo"""
@@ -217,7 +185,6 @@ class EPGProcessor:
         """Detecta se programa é ao vivo, inédito ou reprise"""
         # Ao vivo
         live_patterns = [r"- Ao Vivo", r"- VIVO", r"AO VIVO$"]
-
         for pattern in live_patterns:
             if prog.get("title") and re.search(pattern, prog["title"], re.IGNORECASE):
                 prog["live"] = True
@@ -237,11 +204,22 @@ class EPGProcessor:
                 break
 
         # Reprise/VT
-        rerun_patterns = [r"VT - ", r"- Reprise", r"RetrÔ"]
+        rerun_patterns = [
+            r"VT - ",
+            r" - VT",
+            r"- Reprise",
+            r" - Reapresentação",
+            r"Retrô",
+        ]
         for pattern in rerun_patterns:
             if prog.get("title") and re.search(pattern, prog["title"], re.IGNORECASE):
                 prog["rerun"] = True
                 prog["title"] = re.sub(pattern, "", prog["title"], flags=re.IGNORECASE)
+                prog["live"] = (
+                    "reprise"
+                    if pattern in ["- Reprise", " - Reapresentação"]
+                    else prog["live"]
+                )
                 break
 
         return prog
@@ -332,7 +310,10 @@ class EPGProcessor:
                 prog["genre"] = genre
 
         if (
-            any(ch in channel for ch in ["sportv", "premiere", "combate", "ge-tv"])
+            any(
+                ch in channel
+                for ch in ["sportv", "premiere", "combate", "ge-tv", "band sports"]
+            )
             and mapped
         ):
             if prog.get("live") != True:
@@ -400,7 +381,14 @@ class EPGProcessor:
         prog["rating"] = rating_map.get(rating_clean, rating_clean)
 
         # Remove se for "SC" ou similar
-        if prog["rating"] in ["S/C", "SC", "Sem Classificação", ""]:
+        if prog["rating"] in [
+            "AGE215",
+            "S/C",
+            "SC",
+            "Sem Classificação",
+            "no rating",
+            "",
+        ]:
             prog["rating"] = None
 
         return prog
@@ -408,64 +396,73 @@ class EPGProcessor:
     def process_output(self, prog: Dict) -> Dict:
         """
         Processa saída final do programa organizando título, subtítulo e descrição
-        
+
         Args:
             prog: Dicionário com dados do programa processado
-            
+
         Returns:
             Dicionário atualizado com formatação final
         """
         # Constantes
-        SPORTS_CHANNELS = frozenset([
-            'sportv', 'premiere', 'combate', 'espn', 'sbt', 'ge-tv', 'xsports', 'x sports'
-        ])
+        SPORTS_CHANNELS = frozenset(
+            [
+                "sportv",
+                "premiere",
+                "combate",
+                "espn",
+                "sbt",
+                "ge-tv",
+                "xsports",
+                "x sports",
+            ]
+        )
         MAX_TITLE_LENGTH = 42
-        
+
         # 1. Prepara string de data do evento
-        event_date_str = self._format_event_date(prog.get('event_date'), prog.get('phase'))
-        
+        event_date_str = self._format_event_date(
+            prog.get("event_date"), prog.get("phase")
+        )
+
         # 2. Limpa e normaliza subtítulo
-        prog['subtitle'] = self._clean_subtitle(prog['title'], prog.get('subtitle'))
-        
+        prog["subtitle"] = self._clean_subtitle(prog["title"], prog.get("subtitle"))
+
         # 3. Reorganiza título e subtítulo baseado no contexto
         should_merge = self._should_merge_title_subtitle(
-            prog['title'],
-            prog.get('subtitle'),
-            prog.get('episode'),
-            prog['channel'],
+            prog["title"],
+            prog.get("subtitle"),
+            prog.get("episode"),
+            prog["channel"],
             SPORTS_CHANNELS,
-            MAX_TITLE_LENGTH
+            MAX_TITLE_LENGTH,
         )
-        
+
         if should_merge:
-            prog['title'] = f"{prog['title']}: {prog['subtitle']}"
-            prog['subtitle'] = f"{prog.get('phase') or ''}{event_date_str}".strip()
-            prog['phase'] = None
-            prog['event_date'] = None
-        
+            prog["title"] = f"{prog['title']}: {prog['subtitle']}"
+            prog["subtitle"] = f"{prog.get('phase') or ''}{event_date_str}".strip()
+            prog["phase"] = None
+            prog["event_date"] = None
+
         # 4. Preenche subtítulo vazio com dados contextuais
-        if not prog['subtitle'] and (prog.get('event_date') or prog.get('phase')):
-            prog['subtitle'] = f"{prog.get('phase') or ''}{event_date_str}".strip()
-            prog['phase'] = None
-            prog['event_date'] = None
-        
+        if not prog["subtitle"] and (prog.get("event_date") or prog.get("phase")):
+            prog["subtitle"] = f"{prog.get('phase') or ''}{event_date_str}".strip()
+            prog["phase"] = None
+            prog["event_date"] = None
+
         # 5. Formata descrição
-        prog['description'] = self._format_description(
-            prog.get('phase'),
-            event_date_str,
-            prog.get('description')
+        prog["description"] = self._format_description(
+            prog.get("phase"), event_date_str, prog.get("description")
         )
-        
+
         # 6. Aplica marcadores de transmissão (ao vivo, inédito, etc)
         prog = self._apply_broadcast_markers(prog)
-        
+
         return prog
 
     def _format_event_date(self, event_date: str, phase: str) -> str:
         """Formata string de data do evento com ou sem vírgula"""
         if not event_date:
             return ""
-        
+
         prefix = ", " if phase else ""
         return f"{prefix}realizado em {event_date}"
 
@@ -473,14 +470,16 @@ class EPGProcessor:
         """Remove redundâncias e limpa o subtítulo"""
         if not subtitle or title == subtitle:
             return None
-        
+
         # Remove título do início do subtítulo
-        cleaned = re.sub(rf"^{re.escape(title)}\s*-?\s*", "", subtitle, flags=re.IGNORECASE)
-        
+        cleaned = re.sub(
+            rf"^{re.escape(title)}\s*-?\s*", "", subtitle, flags=re.IGNORECASE
+        )
+
         # Remove hífens e espaços das bordas
         cleaned = re.sub(r"^\s*-?\s*", "", cleaned)
         cleaned = re.sub(r"\s*-?\s*$", "", cleaned)
-        
+
         return cleaned if cleaned else None
 
     def _should_merge_title_subtitle(
@@ -490,66 +489,71 @@ class EPGProcessor:
         episode: int,
         channel: str,
         sports_channels: frozenset,
-        max_length: int
+        max_length: int,
     ) -> bool:
         """Determina se título e subtítulo devem ser mesclados"""
         if not subtitle:
             return False
-        
+
         if episode is not None:
             return False
-        
+
         channel_lower = channel.lower()
         is_sports_channel = any(sc in channel_lower for sc in sports_channels)
-        
+
         return is_sports_channel and len(title) <= max_length
 
-    def _format_description(self, phase: str, event_date_str: str, description: str) -> str:
+    def _format_description(
+        self, phase: str, event_date_str: str, description: str
+    ) -> str:
         """Formata a descrição completa do programa"""
         parts = []
-        
+
         if phase:
             parts.append(phase)
-        
+
         if event_date_str:
             parts.append(event_date_str.lstrip(", "))
-        
+
         if description:
             parts.append(description)
-        
+
         # Une com " - " apenas se houver múltiplas partes
         if len(parts) > 1:
             return " - ".join(parts)
         elif parts:
             return parts[0]
-        
+
         return ""
 
     def _apply_broadcast_markers(self, prog: Dict) -> Dict:
         """Aplica marcadores de tipo de transmissão ao título"""
-        live_status = prog.get('live')
-        
+        live_status = prog.get("live")
+
         # Verifica se já tem marcador no título
-        if "- Ao Vivo" in prog['title']:
-            prog['genre'] = "live broadcast"
+        if "- Ao Vivo" in prog["title"]:
+            prog["genre"] = "live broadcast"
             return prog
-        
+
         # Aplica marcador baseado no status
         if live_status is True:
-            prog['title'] = f"{prog['title']} - ao vivo"
-            prog['genre'] = "live broadcast"
-        
+            prog["title"] = f"{prog['title']} - ao vivo"
+            prog["genre"] = "live broadcast"
+
         elif isinstance(live_status, str):
             if "Destaques + Estreia" in live_status:
-                prog['title'] = f"{prog['title']} - Estreia"
-            
+                prog["title"] = f"{prog['title']} - Estreia"
+
             elif "Destaque" in live_status:
-                prog['live'] = "Destaque"
-            
+                prog["live"] = "Destaque"
+
             elif "Inédito" in live_status or "Estreia" in live_status:
-                prog['title'] = f"{prog['title']} - {live_status}"
-            
+                prog["title"] = f"{prog['title']} - {live_status}"
+
+            elif "reprise" in live_status:
+                prog["title"] = f"{prog['title']} - {live_status}"
+
             elif "VT" in live_status or "Retrô" in live_status:
-                prog['title'] = f"{live_status} - {prog['title']}"
-        
+                prog["title"] = f"{live_status} - {prog['title']}"
+
         return prog

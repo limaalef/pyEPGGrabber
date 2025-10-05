@@ -1,0 +1,28 @@
+api_url: '<LINK DA API DO DMS>'
+
+service_name: Nome do canal
+
+target_channels: ~
+
+api_level_1: epg.programme
+api_level_2: ~
+
+channel: 
+program_title: title
+subtitle: ~
+description: event
+start_time: '@start'
+end_time: '@stop'
+live: ~
+duration: ~
+rating: description
+rating_criteria: ~
+rating_auto: ~
+season: ~
+episode: ~
+tags: ~
+genre: ~
+
+timezone: "America/Sao_Paulo"
+no_loop: true
+use_list_in_url: True

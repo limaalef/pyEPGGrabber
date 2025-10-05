@@ -1,24 +1,24 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Brasil EPG Grabber - Versão Python 1.2.0
 Conversor de EPG de múltiplas fontes para formato XMLTV
 """
 
 import argparse
-import json
+import math
+import os
 from pathlib import Path
-from datetime import datetime, timedelta
+import shutil
 import sys
-from colorama import Fore, Back, Style, init
 
 from epg_config import EPGConfig
 from epg_fetcher import EPGFetcher
 from epg_processor import EPGProcessor
 from epg_writer import EPGWriter
-from epg_logger import EPGLogger
+from epg_logger import Colors, EPGLogger, ProgressLogger
 
-init(autoreset=True)
+VERSION = "2.0.0"
+
+os.system("cls" if os.name == "nt" else "clear")
 
 
 class EPGGrabber:
@@ -27,10 +27,11 @@ class EPGGrabber:
     def __init__(self, config_dir: str = None):
         self.config_dir = Path(config_dir) if config_dir else Path(__file__).parent
         self.config = EPGConfig(self.config_dir)
-        self.logger = EPGLogger(self.config_dir / "log_epg.log")
+        self.logger = EPGLogger()
         self.fetcher = EPGFetcher(self.config)
         self.processor = EPGProcessor(self.config)
         self.writer = EPGWriter(self.config)
+        self.log_path = "log_epg.log"
 
     def grab_epg(
         self,
@@ -50,17 +51,18 @@ class EPGGrabber:
         if services is None:
             services = self.config.get_all_services()
 
-        # Calcula total de tarefas para barra de progresso
-        total_tasks = self._calculate_total_tasks(services, days)
-
-        # Inicia log com total
-        self.logger.start_log(total_tasks)
-
         # Carrega configurações de serviços
         all_programs = []
 
         # Para cada serviço configurado
         try:
+            logger0 = ProgressLogger(
+                log_path=self.log_path,
+                title="API requests",
+                total=len(services),
+                size=len(max(services, key=len)),
+            )
+            logger0.start()
             for service_name in services:
                 service_config = self.config.load_service_config(service_name)
 
@@ -72,7 +74,9 @@ class EPGGrabber:
 
                 # Cria lista de IDs
                 has_placeholder = "LISTACANAIS" in service_config.get("api_url", "")
-                get_list_to_url = service_config.get("list_url", False) and has_placeholder
+                get_list_to_url = (
+                    service_config.get("list_url", False) and has_placeholder
+                )
 
                 if get_list_to_url:
                     channel_list = [{"id": "0"}]
@@ -80,18 +84,21 @@ class EPGGrabber:
                 else:
                     channel_list_url = None
                     channel_list = (
-                    [{"id": channel_id}] if channel_id else
-                    service_config.get("channels") or [{"id": "0"}]
-                )
-            
+                        [{"id": channel_id}]
+                        if channel_id
+                        else service_config.get("channels") or [{"id": "0"}]
+                    )
+
                 # Navega pela lista de IDs
                 for each_channel in channel_list:
-                    list_id_channel = channel_list_url if get_list_to_url else each_channel.get("id")
-                    
+                    all_items = []
+                    list_id_channel = (
+                        channel_list_url if get_list_to_url else each_channel.get("id")
+                    )
+
                     # Captura dados para cada dia
                     for day in day_range:
                         channel_name = each_channel.get("name")
-                        self.logger.log_channel_start(channel_name, day, len(day_range))
                         try:
                             # Faz requisição à API
                             data = self.fetcher.fetch(
@@ -103,25 +110,34 @@ class EPGGrabber:
                                 data, service_config, channel_name
                             )
 
-                            self.logger.log_programs_collected(len(programs))
-
-                            # Processa cada programa
-                            for program in programs:
-                                processed = self.processor.process_program(
-                                    program, service_config
-                                )
-                                if processed:
-                                    all_programs.append(processed)
-                                    self.logger.log_program_processed()
-
-                            self.logger.update_progress()
+                            all_items.extend(programs)
 
                         except Exception as e:
-                            self.logger.log_error(f"{service_config['name']} - {channel_name} (dia +{day}): {str(e)}")
-                            self.logger.update_progress()
-                            continue
-                    
-                    self.logger.log_channel_completed(channel_name)
+                            context = f"{service_config['name']} - {channel_name} (dia +{day})"
+                            self.logger.log_exception(e, context)
+                            break
+
+                    logger1 = ProgressLogger(
+                        log_path=self.log_path,
+                        title=each_channel.get(
+                            "name", service_config.get("name", service_name)
+                        ),
+                        total=len(all_items),
+                        size=len(max(services, key=len)),
+                    )
+                    logger1.start()
+
+                    # Processa cada programa
+                    for program in all_items:
+                        processed = self.processor.process_program(
+                            program, service_config
+                        )
+                        if processed:
+                            all_programs.append(processed)
+
+                        logger1.update()
+
+                logger0.update()
 
             # Ordena programas por canal e horário
             all_programs.sort(key=lambda x: (x["channel"], x["start_time"]))
@@ -136,12 +152,11 @@ class EPGGrabber:
                 all_programs, service_name=name, output_path=output
             )
 
-            self.logger.log_success(f"XML gerado: {output_path}")
-            
         finally:
-            # Garante que log seja finalizado mesmo com erro
-            self.logger.end_log()
-        
+            self.logger.interface_subtitle("")
+            self.logger.interface_item("XML salvo em", output_path)
+            self.logger.interface_subtitle("")
+
         return output_path
 
     def _format_text(self, programs):
@@ -161,16 +176,16 @@ class EPGGrabber:
     def _calculate_total_tasks(self, services: list, days: int) -> int:
         """Calcula número total de requisições que serão feitas"""
         total = 0
-        
+
         for service_name in services:
             service_config = self.config.load_service_config(service_name)
-            channels = service_config.get('channels', [])
-            
+            channels = service_config.get("channels", [])
+
             if channels:
                 num_channels = len(channels)
-                batch_size = service_config.get('batch_size')
-                
-                if 'LISTACANAIS' in service_config['api_url']:
+                batch_size = service_config.get("batch_size")
+
+                if "LISTACANAIS" in service_config["api_url"]:
                     # Requisições em lote
                     if batch_size:
                         batches = (num_channels + batch_size - 1) // batch_size
@@ -182,15 +197,16 @@ class EPGGrabber:
                     total += num_channels * (days + 1)
             else:
                 # API que retorna todos os canais
-                total += (days + 1)
-        
+                total += days + 1
+
         return total
+
 
 def main():
     """Função principal com argumentos de linha de comando"""
     # Exibe banner
     print_banner()
-    
+
     parser = argparse.ArgumentParser(
         description="Brasil EPG Grabber - Captura dados de programação de TV"
     )
@@ -204,11 +220,17 @@ def main():
     )
 
     parser.add_argument(
-        "-s", "--service", type=str, help="Nome do serviço específico (ex: globoplay)"
+        "-s",
+        "--service",
+        "--services",
+        type=str,
+        nargs="+",
+        dest="services",
+        help="Nome do serviço específico (ex: globoplay)",
     )
 
     parser.add_argument(
-        "-c", "--channel", type=int, help="ID do canal (para Globoplay)"
+        "-c", "--channel", type=str, help="ID do canal (para Globoplay)"
     )
 
     parser.add_argument("-o", "--output", type=str, help="Caminho de saída do XML")
@@ -221,8 +243,8 @@ def main():
     grabber = EPGGrabber(config_dir=args.config_dir)
 
     # Determina serviços a usar
-    services = [args.service] if args.service else None
-    
+    services = args.services
+
     # Exibe resumo antes de iniciar
     print_execution_summary(services, args.days, args.channel, args.output)
 
@@ -239,32 +261,57 @@ def main():
         print("\n\n✗ Operação cancelada pelo usuário")
         sys.exit(1)
     except Exception as e:
-        print(f"\n✗ Erro: {str(e)}")
-        sys.exit(1)
+        EPGLogger.log_exception(e, "Erro")
+
 
 def print_banner():
     """Exibe banner do programa"""
-    banner = f"""
-{Back.MAGENTA}{Fore.LIGHTWHITE_EX}{'='*80}{Style.RESET_ALL}
-{Back.MAGENTA}{Fore.LIGHTWHITE_EX}{'  Brasil EPG Grabber - Versão Python 1.2.0':^80}{Style.RESET_ALL}
-{Back.MAGENTA}{Fore.LIGHTWHITE_EX}{'  Conversor de EPG para formato XMLTV':^80}{Style.RESET_ALL}
-{Back.MAGENTA}{Fore.LIGHTWHITE_EX}{'='*80}{Style.RESET_ALL}
-"""
-    print(banner)
+    temp_logger = EPGLogger()
+    cols = shutil.get_terminal_size().columns
 
-def print_execution_summary(services: list, days: int, channel_id: int = None, output: str = None):
+    # Linha 1
+    temp_logger.interface_item("")
+    temp_logger.interface_centered_text(
+        "Brasil EPG Grabber", Colors.SECONDARY_TEXT_COLOR
+    )
+
+    # Linha 2
+    temp_logger.interface_centered_text(
+        "Extração e conversão de EPG para formato XMLTV"
+    )
+    temp_logger.interface_item("")
+
+    # Linha 3
+    linha3_1 = "v"
+    linha3_2 = VERSION
+    linha3_3 = "    @limaalef"
+    spaces_linha3 = f" " * math.floor(
+        max(cols - len(linha3_1) - len(linha3_2) - len(linha3_3), 0) / 2
+    )
+    adjust_linha3 = " " * (
+        cols - len(linha3_1) - len(linha3_2) - len(linha3_3) - len(spaces_linha3) * 2
+    )
+    linha3 = f"{Colors.BG_COLOR}{Colors.PRIMARY_TEXT_COLOR}{spaces_linha3}{linha3_1}{Colors.HIGHLIGHT_TEXT_COLOR}{linha3_2}{Colors.PRIMARY_TEXT_COLOR}{linha3_3}{spaces_linha3}{adjust_linha3}"
+    print(linha3)
+
+
+def print_execution_summary(
+    services: list, days: int, channel_id: int = None, output: str = None
+):
     """Exibe resumo da execução solicitada"""
-    print(f"{Fore.LIGHTMAGENTA_EX}{'RESUMO DA EXECUÇÃO':^80}{Style.RESET_ALL}")
-    print(f"{Fore.LIGHTMAGENTA_EX}{'-'*80}{Style.RESET_ALL}")
-    
+    temp_logger = EPGLogger()
+
+    # Titulo
+    temp_logger.interface_subtitle("Resumo da execução")
+
     # Serviços
     if services and len(services) == 1:
-        print(f"{Fore.WHITE}  Serviço:          {Fore.LIGHTCYAN_EX}{services[0]}{Style.RESET_ALL}")
+        temp_logger.interface_item("Serviço", services[0])
     elif services:
-        print(f"{Fore.WHITE}  Serviços:         {Fore.LIGHTCYAN_EX}{', '.join(services)}{Style.RESET_ALL}")
+        temp_logger.interface_item("Serviços", ", ".join(services))
     else:
-        print(f"{Fore.WHITE}  Serviços:         {Fore.LIGHTCYAN_EX}Todos disponíveis{Style.RESET_ALL}")
-    
+        temp_logger.interface_item("Serviços", "Todos disponíveis")
+
     # Dias
     if days == 0:
         days_text = "Hoje"
@@ -272,19 +319,22 @@ def print_execution_summary(services: list, days: int, channel_id: int = None, o
         days_text = "Hoje + 1 dia"
     else:
         days_text = f"Hoje + {days} dias"
-    print(f"{Fore.WHITE}  Período:          {Fore.LIGHTCYAN_EX}{days_text}{Style.RESET_ALL}")
-    
+
+    temp_logger.interface_item("Período", days_text)
+
     # Canal específico
     if channel_id:
-        print(f"{Fore.WHITE}  Canal específico: {Fore.LIGHTCYAN_EX}ID {channel_id}{Style.RESET_ALL}")
-    
+        temp_logger.interface_item("Canal específico", f"ID {channel_id}")
+
     # Saída
     if output:
-        print(f"{Fore.WHITE}  Arquivo de saída: {Fore.LIGHTCYAN_EX}{output}{Style.RESET_ALL}")
+        temp_logger.interface_item("Arquivo de saída", output)
     else:
-        print(f"{Fore.WHITE}  Arquivo de saída: {Fore.LIGHTCYAN_EX}(diretório atual){Style.RESET_ALL}")
-    
-    print(f"{Fore.LIGHTMAGENTA_EX}{'-'*80}{Style.RESET_ALL}\n")
+        temp_logger.interface_item("Arquivo de saída", "(diretório atual)")
+
+    # Base
+    temp_logger.interface_subtitle("Execução do programa")
+
 
 if __name__ == "__main__":
     main()

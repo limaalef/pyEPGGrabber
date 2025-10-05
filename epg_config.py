@@ -95,7 +95,7 @@ class EPGConfig:
             "genre": self._normalize_path(raw_config.get("genre")),
             "timezone": raw_config.get("timezone", "+00:00"),
             "no_loop": raw_config.get("no_loop", False),
-            "list_url": raw_config.get("use_list_in_url", False)
+            "list_url": raw_config.get("use_list_in_url", False),
         }
 
         # Adiciona ao cache

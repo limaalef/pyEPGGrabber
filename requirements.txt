@@ -3,3 +3,4 @@ pytz>=2025.2
 PyYAML>=6.0
 requests>=2.30.0
 tqdm>=4.66.0
+xmltodict>=0.13.0

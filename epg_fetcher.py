@@ -7,6 +7,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Union
 import pytz
+import xmltodict
 
 
 class EPGFetcher:
@@ -37,7 +38,16 @@ class EPGFetcher:
             response = self.session.get(url, headers=headers, timeout=30)
             response.raise_for_status()
 
-            return response.json()
+            content_type = response.headers.get("Content-Type", "").lower()
+
+            if "json" in content_type:
+                return response.json()
+
+            elif "xml" in content_type:
+                return xmltodict.parse(response.text)
+
+            else:
+                raise ValueError("Resposta não é JSON nem XML válido")
 
         except requests.exceptions.RequestException as e:
             raise Exception(f"Erro ao acessar API: {str(e)}")
@@ -46,7 +56,7 @@ class EPGFetcher:
         self, url_template: str, days: int, channel_id: Optional[Union[int, List]]
     ) -> str:
         """Constrói URL com variáveis substituídas"""
-        
+
         if "QTDDIAS" in url_template:
             date = datetime.now()
         else:
@@ -71,9 +81,9 @@ class EPGFetcher:
 
         if isinstance(channel_id, list) and "LISTACANAIS" in url:
             # Junta IDs com ponto e vírgula
-            id_list_str = ",".join(map(str,[item["id"] for item in channel_id]))
+            id_list_str = ",".join(map(str, [item["id"] for item in channel_id]))
             url = url.replace("LISTACANAIS", id_list_str)
-        
+
         return url
 
     def extract_programs(
@@ -115,7 +125,9 @@ class EPGFetcher:
                 channel = channel_name
 
             # Verifica se canal deve ser incluído
-            target_channels = service_config.get("target_channels", [])
+            target_channels = [
+                ch.lower() for ch in service_config.get("target_channels", [])
+            ]
             if target_channels and not any(
                 ch in str(channel).lower() for ch in target_channels
             ):
@@ -155,7 +167,6 @@ class EPGFetcher:
     ) -> Optional[Dict]:
         """Extrai dados de um programa"""
         start_time = self._extract_field(prog_data, config["start_time"])
-        self._parse_datetime(start_time, config["timezone"])
         end_time = self._extract_field(prog_data, config["end_time"])
         program = {
             "channel": channel,
@@ -191,6 +202,7 @@ class EPGFetcher:
                 return dt
             except ValueError:
                 formats = [
+                    "%Y-%m-%dT%H:%M:%S.%fZ",
                     "%Y-%m-%dT%H:%M:%SZ",
                     "%Y-%m-%dT%H:%MZ",
                     "%Y%m%d%H%M%S %z",
@@ -199,7 +211,9 @@ class EPGFetcher:
 
                 for fmt in formats:
                     try:
-                        return datetime.strptime(dt_str, fmt)
+                        dt = datetime.strptime(dt_str, fmt).replace(microsecond=0)
+                        dt = tz.localize(dt)
+                        return dt
                     except ValueError:
                         continue
 
