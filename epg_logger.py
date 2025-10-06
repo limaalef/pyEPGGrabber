@@ -85,7 +85,7 @@ class ProgressLogger:
 
         # Log em arquivo
         msg = f"\n{'='*80}\nInício: {timestamp}\n{'='*80}\n"
-        self._write(msg + "\n")
+        #self._write(msg + "\n")
 
         return self
 
@@ -134,13 +134,13 @@ class ProgressLogger:
         else:
             return f"    {Colors.UNHIGHLIGHT_TEXT_COLOR}{self.title}  {Colors.SECONDARY_TEXT_COLOR}{bar}{Colors.PRIMARY_TEXT_COLOR} • {percentage:.0f}% •  {Colors.HIGHLIGHT_TEXT_COLOR}{self.current}/{Colors.PRIMARY_TEXT_COLOR}{self.total} programas encontrados"
 
-    def _write(self, message: str):
-        """Escreve no arquivo de log"""
-        try:
-            with open(self.log_path, "a", encoding="utf-8") as f:
-                f.write(message)
-        except Exception as e:
-            print(f"Erro ao escrever log: {e}")
+    #def _write(self, message: str):
+        #"""Escreve no arquivo de log"""
+        #try:
+        #    with open(self.log_path, "a", encoding="utf-8") as f:
+        #        f.write(message)
+        #except Exception as e:
+        #    print(f"Erro ao escrever log: {e}")
 
     @classmethod
     def _display_all(cls):
@@ -216,13 +216,13 @@ class EPGLogger:
     def __init__(self):
         self.start_time = None
 
-    def _write(self, message: str):
-        """Escreve no arquivo de log"""
-        try:
-            with open(self.log_path, "a", encoding="utf-8") as f:
-                f.write(message)
-        except Exception as e:
-            print(f"Erro ao escrever log: {e}")
+    #def _write(self, message: str):
+    #    """Escreve no arquivo de log"""
+        #try:
+        #    with open(self.log_path, "a", encoding="utf-8") as f:
+        #        f.write(message)
+        #except Exception as e:
+        #    print(f"Erro ao escrever log: {e}")
 
     def log_exception(self, exception: Exception, context: str = ""):
         """
@@ -237,7 +237,7 @@ class EPGLogger:
         # Extrai informações do traceback
         tb_list = traceback.extract_tb(exception.__traceback__)
         if not tb_list:
-            self._write(f"[ERRO] {context} - {str(exception)}\n")
+            #self._write(f"[ERRO] {context} - {str(exception)}\n")
             return
 
         last_frame = tb_list[-1]

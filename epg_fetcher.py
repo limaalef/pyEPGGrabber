@@ -3,7 +3,6 @@ Módulo de requisições às APIs de EPG
 """
 
 import requests
-import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Union
 import pytz
@@ -188,33 +187,28 @@ class EPGFetcher:
     def _parse_datetime(self, dt_str: str, timezone: str) -> Optional[datetime]:
         """Parse datetime de vários formatos"""
         tz = pytz.timezone(timezone)
+        
+        s = str(dt_str).strip()
+        if s.isdigit() and len(s) == 14:
+            formats = [
+                "%Y-%m-%dT%H:%M:%S.%fZ",
+                "%Y%m%d%H%M%S",
+            ]
 
-        try:
-            timestamp = int(dt_str)
-            if timestamp > 10000000000:
-                timestamp = timestamp / 1000
-
-            return datetime.fromtimestamp(timestamp, tz)
-        except ValueError:
+            for fmt in formats:
+                try:
+                    dt = datetime.strptime(dt_str, fmt).replace(microsecond=0)
+                    time_return = tz.localize(dt)  
+                except ValueError:
+                    continue 
+        else:
             try:
+                timestamp = int(s)
+                if len(s) == 13:
+                    timestamp = timestamp / 1000.0
+                time_return = datetime.fromtimestamp(timestamp, tz)
+            except:
                 dt = datetime.fromisoformat(dt_str)
-                dt = tz.localize(dt)
-                return dt
-            except ValueError:
-                formats = [
-                    "%Y-%m-%dT%H:%M:%S.%fZ",
-                    "%Y-%m-%dT%H:%M:%SZ",
-                    "%Y-%m-%dT%H:%MZ",
-                    "%Y%m%d%H%M%S %z",
-                    "%Y%m%d%H%M%S",
-                ]
+                time_return = tz.localize(dt)
 
-                for fmt in formats:
-                    try:
-                        dt = datetime.strptime(dt_str, fmt).replace(microsecond=0)
-                        dt = tz.localize(dt)
-                        return dt
-                    except ValueError:
-                        continue
-
-        return dt_str
+        return time_return

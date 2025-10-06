@@ -5,7 +5,7 @@ Processa e normaliza informações de programas
 
 import re
 from datetime import datetime
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 
 
 class EPGProcessor:
@@ -64,7 +64,6 @@ class EPGProcessor:
 
         # Processa específico por canal
         processed = self._process_by_channel(processed, channel)
-        # print(processed[10])
 
         # Mapeia competições e programas
         processed = self._map_competitions_programs(processed, channel)
@@ -194,10 +193,11 @@ class EPGProcessor:
                 break
 
         # Inédito/Estreia
-        premiere_patterns = [r"- Inédito", r"- INÉ?DITO", r"- Estreia"]
+        premiere_patterns = [r"- Inédito", r"- INÉ?DITO", r" INÉDITO", r"- Estreia"]
         for pattern in premiere_patterns:
             if prog.get("title") and re.search(pattern, prog["title"], re.IGNORECASE):
                 prog["premiere"] = True
+                prog["live"] = pattern.replace(" -", "").replace(" ", "").lower()
                 prog["title"] = re.sub(
                     r"\s?-?\s?" + pattern, "", prog["title"], flags=re.IGNORECASE
                 )
@@ -226,11 +226,14 @@ class EPGProcessor:
 
     def _process_by_channel(self, prog: Dict, channel: str) -> Dict:
         """Processamento específico por canal"""
-
         # SporTV, Premiere, Combate
-        if any(ch in channel for ch in ["sportv", "premiere", "combate", "ge-tv"]):
+        if any(ch in channel.lower() for ch in ["sportv", "premiere", "combate", "ge-tv", "x sports", "x-sports"]):
             prog["genre"] = "sports (general)"
 
+            # Separa titulo se subtitulo vazio
+            if not prog["subtitle"] and " - " in prog["title"]:
+                prog["title"], prog["subtitle"] = prog["title"].split(" - ", 1)
+            
             # Normaliza confrontos (X minusculo)
             if prog.get("subtitle"):
                 prog["subtitle"] = re.sub(r"\s+X\s+", " x ", prog["subtitle"])
@@ -413,7 +416,9 @@ class EPGProcessor:
                 "sbt",
                 "ge-tv",
                 "xsports",
+                "X Sports",
                 "x sports",
+                "x-sports",
             ]
         )
         MAX_TITLE_LENGTH = 42
@@ -547,7 +552,7 @@ class EPGProcessor:
             elif "Destaque" in live_status:
                 prog["live"] = "Destaque"
 
-            elif "Inédito" in live_status or "Estreia" in live_status:
+            elif "inédito" in live_status or "estreia" in live_status:
                 prog["title"] = f"{prog['title']} - {live_status}"
 
             elif "reprise" in live_status:

@@ -119,9 +119,7 @@ class EPGGrabber:
 
                     logger1 = ProgressLogger(
                         log_path=self.log_path,
-                        title=each_channel.get(
-                            "name", service_config.get("name", service_name)
-                        ),
+                        title=service_name,
                         total=len(all_items),
                         size=len(max(services, key=len)),
                     )
