@@ -215,53 +215,53 @@ class EPGLogger:
 
     def __init__(self):
         self.start_time = None
+        # Adicione isto se quiser manter estatísticas:
+        self.stats = {
+            'errors': 0,
+            'warnings': 0
+        }
 
-    #def _write(self, message: str):
-    #    """Escreve no arquivo de log"""
-        #try:
-        #    with open(self.log_path, "a", encoding="utf-8") as f:
-        #        f.write(message)
-        #except Exception as e:
-        #    print(f"Erro ao escrever log: {e}")
+    def increment_stat(self, stat_name: str, value: int = 1):
+        """Incrementa estatística específica"""
+        if stat_name in self.stats:
+            self.stats[stat_name] += value
 
     def log_exception(self, exception: Exception, context: str = ""):
         """
         Registra exceção com traceback e trecho de código
-
+        
         Args:
             exception: Exceção capturada
             context: Contexto adicional
         """
-        self.increment_stat("errors")
-
+        self.increment_stat('errors')
+        
         # Extrai informações do traceback
         tb_list = traceback.extract_tb(exception.__traceback__)
         if not tb_list:
-            #self._write(f"[ERRO] {context} - {str(exception)}\n")
+            print(f"[ERRO] {context} - {str(exception)}")
             return
-
+        
         last_frame = tb_list[-1]
         file_path = last_frame.filename
         file_name = Path(file_path).name
         line_num = last_frame.lineno
         func_name = last_frame.name
-
+        
         # Mensagem resumida para console
         short_msg = f"{file_name}:{line_num} em {func_name}() - {type(exception).__name__}: {str(exception)}"
         if context:
             short_msg = f"{context} - {short_msg}"
-
-        print(f"❌ {short_msg}")
-
+        
+        # Imprime erro (removido progress_bar.write)
+        print(f"\n❌ {short_msg}{Colors.RESET}\n")
+        
         # Extrai código-fonte ao redor do erro
         code_context = self._get_code_context(file_path, line_num, context_lines=3)
-
-        # Log completo para arquivo
-        full_msg = f"""
-
-{code_context}
-"""
-        print(full_msg)
+        
+        # Exibe código no console
+        print(code_context)
+        sys.exit(1)
 
     def _get_code_context(
         self, file_path: str, line_num: int, context_lines: int = 3
