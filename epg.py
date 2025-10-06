@@ -1,5 +1,5 @@
 """
-Brasil EPG Grabber - Versão Python 1.2.0
+Brasil EPG Grabber - Versão Python 2.1.1
 Conversor de EPG de múltiplas fontes para formato XMLTV
 """
 
@@ -16,7 +16,7 @@ from epg_processor import EPGProcessor
 from epg_writer import EPGWriter
 from epg_logger import Colors, EPGLogger, ProgressLogger
 
-VERSION = "2.0.0"
+VERSION = "2.1.1"
 
 os.system("cls" if os.name == "nt" else "clear")
 

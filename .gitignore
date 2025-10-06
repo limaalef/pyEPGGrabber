@@ -11,3 +11,4 @@ services/target_claro.yaml
 services/local_xsports.yaml
 services/vivoplay.yaml
 log_epg.log
+services/local_saopaulo.yaml

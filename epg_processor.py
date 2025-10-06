@@ -226,8 +226,15 @@ class EPGProcessor:
 
     def _process_by_channel(self, prog: Dict, channel: str) -> Dict:
         """Processamento específico por canal"""
+        if 'local' in channel.lower():
+            if prog.get("description"):
+                if re.search(r"\[(\d+\+)\]", prog["description"]):
+                    match = re.search(r"\[(\d+\+)\]", prog["description"])
+                    prog["rating"] = match.group(1) if match else None
+                    prog["description"] = re.sub(r"\s*\[\d+\+\]", "", prog["description"])
+
         # SporTV, Premiere, Combate
-        if any(ch in channel.lower() for ch in ["sportv", "premiere", "combate", "ge-tv", "x sports", "x-sports"]):
+        if any(ch in channel for ch in ["sportv", "premiere", "combate", "ge-tv"]):
             prog["genre"] = "sports (general)"
 
             # Separa titulo se subtitulo vazio
@@ -241,9 +248,17 @@ class EPGProcessor:
             # Remove sufixos desnecessários
             if prog.get("subtitle"):
                 prog["subtitle"] = re.sub(r"\s?-?\s?Globoplay", "", prog["subtitle"])
+        
+        elif 'x sports' in channel.lower():
+            if prog["subtitle"]:
+                prog["description"] = prog["subtitle"]
+                prog["subtitle"] = None
+            
+            if not prog["subtitle"] and " - " in prog["title"]:
+                prog["title"], prog["subtitle"] = prog["title"].split(" - ", 1)
 
         # Globo
-        elif "globo" in channel:
+        elif "globo sp" in channel.lower():
             # Trata "Vale a Pena Ver de Novo"
             if prog.get("title") and "Vale a Pena Ver de Novo" in prog["title"]:
                 match = re.search(r"Vale a Pena Ver de Novo\s*-\s*(.*)", prog["title"])
@@ -257,6 +272,13 @@ class EPGProcessor:
                 if match:
                     prog["subtitle"] = match.group(1)
                     prog["title"] = "Sessão Globoplay"
+
+            if prog["subtitle"]:
+                prog["description"] = prog["subtitle"]
+                prog["subtitle"] = None
+            
+            if not prog["subtitle"] and " - " in prog["title"]:
+                prog["title"], prog["subtitle"] = prog["title"].split(" - ", 1)
 
         # GloboNews
         elif "globonews" in channel or "news" in channel:
@@ -351,6 +373,7 @@ class EPGProcessor:
     def _normalize_rating(self, prog: Dict) -> Dict:
         """Normaliza classificação indicativa para formato brasileiro"""
         rating = prog.get("rating")
+
         if not rating:
             return prog
 
@@ -379,6 +402,7 @@ class EPGProcessor:
 
         # Remove "anos" e espaços
         rating_clean = str(rating).replace(" anos", "").strip()
+        rating_clean = str(rating).replace("[", "").strip().replace("]", "").strip()
 
         # Mapeia
         prog["rating"] = rating_map.get(rating_clean, rating_clean)
