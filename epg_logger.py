@@ -7,23 +7,268 @@ import math
 import shutil
 import sys
 import traceback
+import os
+import platform
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
 import time
 
+TERMINAL_SIZE = 0
+
 class Colors:
+    SYSTEM = platform.system()
+
     RESET = "\033[0m"
-
-    BG_COLOR = "\033[48;2;30;30;46m"
-
+    
+    # Cores primárias
+    PRIMARY_TEXT_COLOR = "\033[38;2;205;214;244m"
+    SECONDARY_TEXT_COLOR = "\033[38;2;245;237;194m"
+    SUCCESS_COLOR = "\033[38;2;141;191;141m"
+    ERROR_COLOR = "\033[38;2;212;122;130m"
+    WARNING_COLOR = "\033[38;2;238;234;190m"
+    INFO_COLOR = "\033[38;2;116;151;228m"
     LINE_COLOR = "\033[38;2;54;54;84m"
     EMPTY_COLOR = "\033[38;2;74;74;104m"
 
-    PRIMARY_TEXT_COLOR = "\033[38;2;205;214;244m"
-    SECONDARY_TEXT_COLOR = "\033[38;2;245;237;194m"
-    HIGHLIGHT_TEXT_COLOR = "\033[38;2;148;226;213m"
-    UNHIGHLIGHT_TEXT_COLOR = "\033[38;2;162;169;193m"
+    # Cores de destaque
+    HIGHLIGHTED_COLOR = "\033[38;2;148;226;213m"
+    UNHIGHLIGHTED_COLOR = "\033[38;2;162;169;193m"
+    SELECTED_BG = "\033[45m\033[97m\033[1m"
+
+    # Cores de fundo
+    BG_COLOR = "\033[48;2;30;30;46m"
+    MAGENTA_BG = "\033[45m"
+
+    # Formatação
+    BOLD = "\033[1m"
+    DIM = "\033[2m"
+    RESET = "\033[40m"
+
+    # Atalhos combinados
+    TITLE = "\033[1m\033[95m"
+    PROMPT = "\033[1m\033[96m"
+
+    # Medidas
+    MARGIN_LEFT = 4
+
+    # Bordas
+    HORIZONTAL = '─'
+    VERTICAL = '│'
+    TOP_LEFT = '╭'
+    TOP_RIGHT = '╮'
+    TOP_MIDDLE = '┬'
+    BOTTOM_LEFT = '╰'
+    BOTTOM_RIGHT = '╯'
+    BOTTOM_MIDDLE = '┴'
+    VERTICAL_LEFT = '├'
+
+    def clear_screen():
+        """Limpa a tela"""
+        print(f"{Colors.BG_COLOR}")
+        os.system("cls" if Colors.SYSTEM == "Windows" else "clear")
+
+    def print_banner(title="Titulo", subtitle: Optional[str] = "", version: Optional[str] = ""):
+        """Exibe banner do programa"""
+        Colors.clear_screen()
+        cols = shutil.get_terminal_size().columns
+
+        # Linha 1
+        Colors.item()
+        Colors.center_text(title, Colors.SECONDARY_TEXT_COLOR)
+        if subtitle:
+            Colors.center_text(subtitle)
+
+        # Linha 2
+        Colors.item()
+
+        # Linha 3
+        if version:
+            Colors.center_text(f"v{version}     @limaalef", highlight=version)
+    
+    def error(message, title = "Erro"):
+        Colors._box(title, message, Colors.ERROR_COLOR, center=True)
+
+    def warning(message, title = "Atenção"):
+        Colors._box(title, message, Colors.WARNING_COLOR, center=True)
+
+    def info(message, title = "Info"):
+        Colors._box(title, message, Colors.INFO_COLOR, center=True)
+
+    def ok(message, title = "Ok"):
+        Colors._box(title, message, Colors.SUCCESS_COLOR, center=True)
+
+    def item(title: str = "", subtitle: Optional[str] = "", index: Optional[str] = "", color = PRIMARY_TEXT_COLOR, highlight: Optional[str] = ""):
+        left_margin = Colors.MARGIN_LEFT
+        padding = " " * left_margin
+
+        if highlight and highlight in title:
+            split_title = title.split(highlight)
+            title = f"{split_title[0]}{Colors.HIGHLIGHTED_COLOR}{highlight}{Colors.PRIMARY_TEXT_COLOR}{split_title[1]}"
+
+        if subtitle:
+            line = f"{color}{title}: {Colors.SECONDARY_TEXT_COLOR}{subtitle}{Colors.PRIMARY_TEXT_COLOR}"
+        else:
+            line = f"{color}{title} {Colors.SECONDARY_TEXT_COLOR}{subtitle}{Colors.PRIMARY_TEXT_COLOR}"
+
+        if index:
+            line = f"{Colors.HIGHLIGHTED_COLOR}{index} {line}"
+    
+        line = f"{padding}{line}"
+        print(line)
+
+    def select_item(title: str = "", selected: str = ""):
+        indent = " " * Colors.MARGIN_LEFT
+
+        if selected:
+            output = f"{Colors.PRIMARY_TEXT_COLOR}{indent}{title} {Colors.UNHIGHLIGHTED_COLOR}[{selected}]{Colors.PRIMARY_TEXT_COLOR}: {Colors.HIGHLIGHTED_COLOR}"
+        else:
+            output = f"{Colors.PRIMARY_TEXT_COLOR}{indent}{title}: {Colors.HIGHLIGHTED_COLOR}"
+
+        return output
+
+    def center_text(title: str = "", color: str = PRIMARY_TEXT_COLOR, highlight: Optional[str] = ""):
+        total_width = shutil.get_terminal_size().columns
+        if TERMINAL_SIZE < total_width and TERMINAL_SIZE > 0:
+            total_width = TERMINAL_SIZE
+            
+        size = total_width
+        
+        if highlight and highlight in title:
+            split_title = title.split(highlight)
+            title = f"{split_title[0]}{Colors.HIGHLIGHTED_COLOR}{highlight}{color}{split_title[1]}"
+            size = size + len(Colors.HIGHLIGHTED_COLOR) + len(color)
+
+        line = title.center(size)
+        print(f"{color}{line}{Colors.PRIMARY_TEXT_COLOR}")
+
+    def center_title(title: str = "", color: str = PRIMARY_TEXT_COLOR, highlight: Optional[str] = ""):
+        total_width = shutil.get_terminal_size().columns
+        if TERMINAL_SIZE < total_width and TERMINAL_SIZE > 0:
+            total_width = TERMINAL_SIZE
+            
+        left_margin = Colors.MARGIN_LEFT
+        max_width = total_width - left_margin*2 - 2
+
+        line_width = math.floor((max_width - len(title))/2)
+        line_item = f"─" * line_width
+
+        padding = " " * left_margin
+        
+        if highlight and highlight in title:
+            split_title = title.split(highlight)
+            title = f"{split_title[0]}{Colors.HIGHLIGHTED_COLOR}{highlight}{Colors.PRIMARY_TEXT_COLOR}{split_title[1]}"
+
+        line = f"{padding}{Colors.LINE_COLOR}{line_item} {Colors.SECONDARY_TEXT_COLOR}{title} {Colors.LINE_COLOR}{line_item}{Colors.PRIMARY_TEXT_COLOR}"
+        print(f"\n{color}{line}\n")
+        
+    def list_item(items: list[str]):
+        left_margin = Colors.MARGIN_LEFT
+        total_width = shutil.get_terminal_size().columns
+        if TERMINAL_SIZE < total_width and TERMINAL_SIZE > 0:
+            total_width = TERMINAL_SIZE
+
+        max_width = total_width - left_margin * 2 - 2 - 2
+        padding = " " * left_margin
+        s_padding = Colors.HORIZONTAL * 2
+
+        for i, item in enumerate(items):
+            item_lines = Colors._wrap_text(item, max_width)
+            for k, line_text in enumerate(item_lines):
+                if len(items) == 1:
+                    if k == 0:
+                        prefix = f"{padding}{Colors.LINE_COLOR}{Colors.BOTTOM_LEFT}{s_padding} "
+                    else:
+                        prefix = f"{padding}    "
+                else:
+                    if i == len(items) - 1:
+                        if k == 0:
+                            prefix = f"{padding}{Colors.LINE_COLOR}{Colors.BOTTOM_LEFT}{s_padding} "
+                        else:
+                            prefix = f"{padding}{Colors.LINE_COLOR}    "
+                    else:
+                        if k == 0:
+                            prefix = f"{padding}{Colors.LINE_COLOR}{Colors.VERTICAL_LEFT}{s_padding} "
+                        else:
+                            prefix = f"{padding}{Colors.LINE_COLOR}{Colors.VERTICAL}   "
+
+                print(f"{prefix}{Colors.UNHIGHLIGHTED_COLOR}{line_text}{Colors.PRIMARY_TEXT_COLOR}")
+
+    def _wrap_text(text, max_width):
+        words = text.split()
+        lines = []
+        current_line = ""
+        
+        for word in words:
+            # Se a palavra sozinha é maior que a largura, quebra ela
+            if len(word) > max_width:
+                if current_line:
+                    lines.append(current_line.strip())
+                    current_line = ""
+                # Quebra a palavra em pedaços
+                for i in range(0, len(word), max_width):
+                    lines.append(word[i:i+max_width])
+            # Se adicionar a palavra ultrapassar a largura
+            elif len(current_line) + len(word) + 1 > max_width:
+                lines.append(current_line.strip())
+                current_line = word + " "
+            else:
+                current_line += word + " "
+        
+        if current_line.strip():
+            lines.append(current_line.strip())
+        
+        return lines if lines else [""]
+
+    def _box(title, message, box_color=PRIMARY_TEXT_COLOR, text_color=PRIMARY_TEXT_COLOR, width: int = None, center: bool = False):
+        left_margin = Colors.MARGIN_LEFT
+        message = str(message)
+        title = str(title)
+
+        total_width = shutil.get_terminal_size().columns
+        if TERMINAL_SIZE < total_width and TERMINAL_SIZE > 0:
+            total_width = TERMINAL_SIZE
+            
+        if center and width:
+            max_width = width
+        elif width:
+            max_width = width - 2 - 2 - left_margin
+        else:
+            max_width = total_width - 2 - 2 - left_margin*2
+        
+        # Processa o texto: divide por \n e depois quebra cada linha
+        all_lines = []
+        for line in message.split('\n'):
+            all_lines.extend(Colors._wrap_text(line, max_width))
+        
+        # Margem esquerda
+        left_space = ' ' * left_margin
+        
+        # Linha superior (topo)
+        top_table = Colors.HORIZONTAL * (max_width + 2)
+        top_table = Colors.HORIZONTAL + f" {title} " + top_table[len(title) + 3:]
+
+        if center:
+            top_line = f"{box_color}{Colors.TOP_LEFT}{top_table}{Colors.TOP_RIGHT}".center(total_width + len(box_color))
+        else:
+            top_line = f"{left_space}{box_color}{Colors.TOP_LEFT}{top_table}{Colors.TOP_RIGHT}"
+        print(top_line, end="\n")
+        
+        # Linhas de conteúdo
+        for line in all_lines:
+            padding = ' ' * (max_width - len(line))
+            if center:
+                content_line = f"{box_color}{Colors.VERTICAL} {text_color}{line}{padding} {box_color}{Colors.VERTICAL}".center(total_width + len(box_color)*2 + len(text_color))
+            else:
+                content_line = f"{left_space}{box_color}{Colors.VERTICAL} {text_color}{line}{padding} {box_color}{Colors.VERTICAL}{text_color}"
+            print(content_line, end="\n")
+        
+        # Linha inferior (base)
+        if center:
+            bottom_line = f"{box_color}{Colors.BOTTOM_LEFT}{Colors.HORIZONTAL * (max_width + 2)}{Colors.BOTTOM_RIGHT}".center(total_width + len(box_color))
+        else:
+            bottom_line = f"{left_space}{box_color}{Colors.BOTTOM_LEFT}{Colors.HORIZONTAL * (max_width + 2)}{Colors.BOTTOM_RIGHT}{text_color}"
+        print(bottom_line, end=f"{text_color}\n")
 
 
 class ProgressLogger:
@@ -68,6 +313,11 @@ class ProgressLogger:
         self.position = -1
         self.size = size
         self.log_path = Path(log_path)
+
+        if TERMINAL_SIZE < self.bar_length and TERMINAL_SIZE > 0:
+            self.bar_length = TERMINAL_SIZE - size - 60
+            
+        
 
     def start(self):
         """Inicia o contador de tempo e registra a barra."""
@@ -130,9 +380,9 @@ class ProgressLogger:
         if self.is_complete:
             elapsed_time = self.end_time - self.start_time
             rate = self.total / elapsed_time if elapsed_time > 0 else 0
-            return f"    {Colors.UNHIGHLIGHT_TEXT_COLOR}{self.title}  {Colors.HIGHLIGHT_TEXT_COLOR}{bar}{Colors.PRIMARY_TEXT_COLOR} • {percentage:.0f}% • {self.total}/{self.total}{space}{Colors.UNHIGHLIGHT_TEXT_COLOR}{rate:.2f} itens/seg"
+            return f"    {Colors.UNHIGHLIGHTED_COLOR}{self.title}  {Colors.HIGHLIGHTED_COLOR}{bar}{Colors.PRIMARY_TEXT_COLOR} • {percentage:.0f}% • {self.total}/{self.total}{space}{Colors.UNHIGHLIGHTED_COLOR}{rate:.2f} itens/seg"
         else:
-            return f"    {Colors.UNHIGHLIGHT_TEXT_COLOR}{self.title}  {Colors.SECONDARY_TEXT_COLOR}{bar}{Colors.PRIMARY_TEXT_COLOR} • {percentage:.0f}% •  {Colors.HIGHLIGHT_TEXT_COLOR}{self.current}/{Colors.PRIMARY_TEXT_COLOR}{self.total} programas encontrados"
+            return f"    {Colors.UNHIGHLIGHTED_COLOR}{self.title}  {Colors.SECONDARY_TEXT_COLOR}{bar}{Colors.PRIMARY_TEXT_COLOR} • {percentage:.0f}% •  {Colors.HIGHLIGHTED_COLOR}{self.current}/{Colors.PRIMARY_TEXT_COLOR}{self.total} programas encontrados"
 
     #def _write(self, message: str):
         #"""Escreve no arquivo de log"""
@@ -254,7 +504,7 @@ class EPGLogger:
             short_msg = f"{context} - {short_msg}"
         
         # Imprime erro (removido progress_bar.write)
-        print(f"\n❌ {short_msg}{Colors.RESET}\n")
+        Colors.error(short_msg)
         
         # Extrai código-fonte ao redor do erro
         code_context = self._get_code_context(file_path, line_num, context_lines=3)
@@ -313,11 +563,11 @@ class EPGLogger:
                         )
                     else:
                         marker = "│     "
-                        new_line = f"{Colors.UNHIGHLIGHT_TEXT_COLOR}{marker}{i:4d} | {line.rstrip()}"
+                        new_line = f"{Colors.UNHIGHLIGHTED_COLOR}{marker}{i:4d} | {line.rstrip()}"
                         spaces = max(
                             cols
                             - len(new_line)
-                            + len(Colors.UNHIGHLIGHT_TEXT_COLOR)
+                            + len(Colors.UNHIGHLIGHTED_COLOR)
                             - 1,
                             0,
                         )
@@ -333,51 +583,3 @@ class EPGLogger:
 
         except Exception:
             return "Erro ao ler código fonte"
-
-    def interface_subtitle(self, subtitle: Optional[str]):
-        cols = shutil.get_terminal_size().columns
-
-        text_space = 4 if not subtitle else 6
-        the_space = "" if not subtitle else " "
-
-        print(f"{Colors.BG_COLOR} " * cols)
-
-        spaces = f"{Colors.BG_COLOR}{Colors.LINE_COLOR}─" * math.floor(
-            max(cols - len(subtitle) - text_space, 0) / 2
-        )
-        adjust = " " * (cols - len(subtitle) - len(spaces) * 2)
-        print(
-            f"{Colors.BG_COLOR}  {spaces}{the_space}{Colors.BG_COLOR}{Colors.SECONDARY_TEXT_COLOR}{subtitle}{the_space}{spaces}{adjust}  "
-        )
-
-        print(f"{Colors.BG_COLOR}{Colors.PRIMARY_TEXT_COLOR} " * cols)
-
-    def interface_item(self, title: str = "", subtitle: str = ""):
-        cols = shutil.get_terminal_size().columns
-
-        indent = "    "
-
-        if subtitle:
-            output = f"{Colors.BG_COLOR}{Colors.PRIMARY_TEXT_COLOR}{indent}{title}: {Colors.HIGHLIGHT_TEXT_COLOR}{subtitle}"
-        else:
-            output = f"{Colors.BG_COLOR}{Colors.PRIMARY_TEXT_COLOR}{indent}{title} {Colors.HIGHLIGHT_TEXT_COLOR}{subtitle}"
-
-        space = f"{Colors.BG_COLOR} " * max(
-            cols
-            + len(Colors.BG_COLOR)
-            + len(Colors.PRIMARY_TEXT_COLOR)
-            + len(Colors.HIGHLIGHT_TEXT_COLOR)
-            - len(output),
-            0,
-        )
-        print(f"{output}{space}")
-
-    def interface_centered_text(
-        self, title: str = "", color: str = Colors.PRIMARY_TEXT_COLOR
-    ):
-        cols = shutil.get_terminal_size().columns
-
-        space = f" " * math.floor(max(cols - len(title), 0) / 2)
-        adjust = " " * (cols - len(title) - len(space) * 2)
-        line = f"{Colors.BG_COLOR}{color}{space}{title}{space}{adjust}"
-        print(line)

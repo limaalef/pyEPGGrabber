@@ -16,9 +16,11 @@ from epg_processor import EPGProcessor
 from epg_writer import EPGWriter
 from epg_logger import Colors, EPGLogger, ProgressLogger
 
-VERSION = "2.1.1"
+TITULO = "Brasil EPG Grabber"
+SUBTITULO = "Extração e conversão de EPG para formato XMLTV"
+VERSION = "2.2.0"
 
-os.system("cls" if os.name == "nt" else "clear")
+Colors.clear_screen()
 
 
 class EPGGrabber:
@@ -151,9 +153,9 @@ class EPGGrabber:
             )
 
         finally:
-            self.logger.interface_subtitle("")
-            self.logger.interface_item("XML salvo em", output_path)
-            self.logger.interface_subtitle("")
+            Colors.item()
+            Colors.ok(output_path, "XML salvo em")
+            Colors.item()
 
         return output_path
 
@@ -203,7 +205,7 @@ class EPGGrabber:
 def main():
     """Função principal com argumentos de linha de comando"""
     # Exibe banner
-    print_banner()
+    Colors.print_banner(TITULO, SUBTITULO, VERSION)
 
     parser = argparse.ArgumentParser(
         description="Brasil EPG Grabber - Captura dados de programação de TV"
@@ -256,59 +258,26 @@ def main():
         )
 
     except KeyboardInterrupt:
-        print("\n\n✗ Operação cancelada pelo usuário")
+        Colors.warning("Operação cancelada pelo usuário")
         sys.exit(1)
     except Exception as e:
         EPGLogger.log_exception(e, "Erro")
-
-
-def print_banner():
-    """Exibe banner do programa"""
-    temp_logger = EPGLogger()
-    cols = shutil.get_terminal_size().columns
-
-    # Linha 1
-    temp_logger.interface_item("")
-    temp_logger.interface_centered_text(
-        "Brasil EPG Grabber", Colors.SECONDARY_TEXT_COLOR
-    )
-
-    # Linha 2
-    temp_logger.interface_centered_text(
-        "Extração e conversão de EPG para formato XMLTV"
-    )
-    temp_logger.interface_item("")
-
-    # Linha 3
-    linha3_1 = "v"
-    linha3_2 = VERSION
-    linha3_3 = "    @limaalef"
-    spaces_linha3 = f" " * math.floor(
-        max(cols - len(linha3_1) - len(linha3_2) - len(linha3_3), 0) / 2
-    )
-    adjust_linha3 = " " * (
-        cols - len(linha3_1) - len(linha3_2) - len(linha3_3) - len(spaces_linha3) * 2
-    )
-    linha3 = f"{Colors.BG_COLOR}{Colors.PRIMARY_TEXT_COLOR}{spaces_linha3}{linha3_1}{Colors.HIGHLIGHT_TEXT_COLOR}{linha3_2}{Colors.PRIMARY_TEXT_COLOR}{linha3_3}{spaces_linha3}{adjust_linha3}"
-    print(linha3)
 
 
 def print_execution_summary(
     services: list, days: int, channel_id: int = None, output: str = None
 ):
     """Exibe resumo da execução solicitada"""
-    temp_logger = EPGLogger()
-
     # Titulo
-    temp_logger.interface_subtitle("Resumo da execução")
+    Colors.center_title("Resumo da execução")
 
     # Serviços
     if services and len(services) == 1:
-        temp_logger.interface_item("Serviço", services[0])
+        Colors.item("Serviço", services[0])
     elif services:
-        temp_logger.interface_item("Serviços", ", ".join(services))
+        Colors.item("Serviços", ", ".join(services))
     else:
-        temp_logger.interface_item("Serviços", "Todos disponíveis")
+        Colors.item("Serviços", "Todos disponíveis")
 
     # Dias
     if days == 0:
@@ -318,20 +287,20 @@ def print_execution_summary(
     else:
         days_text = f"Hoje + {days} dias"
 
-    temp_logger.interface_item("Período", days_text)
+    Colors.item("Período", days_text)
 
     # Canal específico
     if channel_id:
-        temp_logger.interface_item("Canal específico", f"ID {channel_id}")
+        Colors.item("Canal específico", f"ID {channel_id}")
 
     # Saída
     if output:
-        temp_logger.interface_item("Arquivo de saída", output)
+        Colors.item("Arquivo de saída", output)
     else:
-        temp_logger.interface_item("Arquivo de saída", "(diretório atual)")
+        Colors.item("Arquivo de saída", "(diretório atual)")
 
     # Base
-    temp_logger.interface_subtitle("Execução do programa")
+    Colors.center_title("Execução do programa")
 
 
 if __name__ == "__main__":
