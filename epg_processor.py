@@ -7,6 +7,12 @@ import re
 from datetime import datetime
 from typing import Dict, Optional
 
+try:
+    from sports_api import ScheduleSearcher
+    spa = True
+except ImportError:
+    spa = None
+
 
 class EPGProcessor:
     """Processa e normaliza dados de EPG"""
@@ -174,7 +180,7 @@ class EPGProcessor:
                     else:
                         prog["phase"] = replacement
                     prog["subtitle"] = re.sub(
-                        r"\s?-?\s?" + pattern, "", prog["subtitle"], flags=re.IGNORECASE
+                        r"\s?-?\s?" + pattern + r"\s?-?\s?", "", prog["subtitle"], flags=re.IGNORECASE
                     )
                     break
 
@@ -259,12 +265,31 @@ class EPGProcessor:
 
         # Globo
         elif "globo sp" in channel.lower():
+            SESSOES_FILMES = [
+                "Corujão I",
+                "Corujão II",
+                "Corujão III",
+                "Corujão VI",
+                "Temperatura Máxima",
+                "Campeões de Bilheteria",
+                "Domingo Maior",
+                "Sessão da Tarde",
+                "Tela Quente",
+                "Cinemaço",
+                "Cinema Especial",
+                "Festival de Sucessos",
+                "Sessão Brasil",
+                "Sessão de Natal",
+                "Supercine"
+            ]
+
             # Trata "Vale a Pena Ver de Novo"
             if prog.get("title") and "Vale a Pena Ver de Novo" in prog["title"]:
                 match = re.search(r"Vale a Pena Ver de Novo\s*-\s*(.*)", prog["title"])
                 if match:
                     prog["subtitle"] = match.group(1)
                     prog["title"] = "Vale a Pena Ver de Novo"
+            
 
             # Trata "Sessão Globoplay"
             if prog.get("title") and "Sessão Globoplay" in prog["title"]:
@@ -279,6 +304,28 @@ class EPGProcessor:
             
             if not prog["subtitle"] and " - " in prog["title"]:
                 prog["title"], prog["subtitle"] = prog["title"].split(" - ", 1)
+
+            # Captura dados de jogos de futebol
+            if prog.get("title") == "Futebol" and spa is True:
+                searcher = ScheduleSearcher(prog["start_time"], ["Brasil", "Corinthians", "Palmeiras", "São Paulo", "Santos"], use_cache=True)
+
+                r = searcher.get_match(prog["start_time"], "Globo")
+                print(len(r))
+                if len(r) > 0:
+                    prog["title"] = r["title"]
+
+                    temp = self._map_competitions_programs(prog, prog["channel"])
+                    prog["title"] = f'{temp["title"]}: {r["subtitle"]}'
+                    prog["phase"] = r["phase"]
+                    prog["description"] = f'{r["description"]}. {prog["description"]}'
+        
+            if prog.get("title").strip().lower() in [s.lower() for s in SESSOES_FILMES]:
+                prog["title"] = f'{prog["title"]}: {prog["subtitle"]}'
+                prog["subtitle"] = ""
+
+            if "Edição Especial" in prog.get("title"):
+                prog["title"] = f'{prog["subtitle"]} - {prog["title"]}'
+                prog["subtitle"] = ""
 
         # GloboNews
         elif "globonews" in channel or "news" in channel:
@@ -326,9 +373,9 @@ class EPGProcessor:
     def _map_competitions_programs(self, prog: Dict, channel: str) -> Dict:
         """Mapeia nomes de competições e programas"""
         title = prog.get("title", "")
-
+        
         # Tenta mapear competição
-        mapped, genre = self.config.get_competition_mapping(title, channel)
+        mapped, genre = self.config.get_competition_mapping(title)
         if mapped:
             prog["title"] = mapped
             if genre:
@@ -337,7 +384,7 @@ class EPGProcessor:
         if (
             any(
                 ch in channel
-                for ch in ["sportv", "premiere", "combate", "ge-tv", "band sports"]
+                for ch in ["sportv", "premiere", "combate", "ge-tv", "band sports", "globo sp_local"]
             )
             and mapped
         ):

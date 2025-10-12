@@ -12,3 +12,4 @@ services/local_xsports.yaml
 services/vivoplay.yaml
 log_epg.log
 services/local_saopaulo.yaml
+matches_cache.db

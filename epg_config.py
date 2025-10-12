@@ -15,6 +15,7 @@ class EPGConfig:
         self.config_dir = Path(config_dir)
         self.services_dir = self.config_dir / "services"
         self.mappings_file = self.config_dir / "mappings.yaml"
+        self.matches_db = self.config_dir / "matches_cache.db"
 
         # Cache de configurações para evitar leituras repetidas
         self._services_cache = {}
@@ -137,8 +138,7 @@ class EPGConfig:
         return config.get("channels", [])
 
     def get_competition_mapping(
-        self, competition_name: str, channel: str = None
-    ) -> tuple:
+        self, competition_name: str) -> tuple:
         """
         Busca mapeamento de competição
 
