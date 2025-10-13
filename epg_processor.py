@@ -64,6 +64,7 @@ class EPGProcessor:
         processed = self._extract_date(processed)
         processed = self._extract_season_episode(processed)
         processed = self._extract_phase(processed)
+        processed = self._extract_location(processed)
 
         # Detecta se é ao vivo, inédito ou reprise
         processed = self._detect_live_status(processed)
@@ -158,32 +159,137 @@ class EPGProcessor:
 
     def _extract_phase(self, prog: Dict) -> Dict:
         """Extrai fases de competição (oitavas, quartas, final, etc)"""
-        phase_patterns = {
-            "Oitavas De Final": "Oitavas de Final",
-            "Quartas De Final": "Quartas de Final",
-            "Semifinal": "Semifinal",
-            "Semifinais": "Semifinal",
-            "Final": "Final",
-            "Finais": "Final",
-            "Fase De Grupos": "Fase de Grupos",
-            r"(\d+)ª Rodada": lambda m: f"{str(m.group(1))}ª Rodada",
-            "Jogo De Ida": "Jogo de Ida",
-            "Jogo De Volta": "Jogo de Volta",
-        }
-
-        if prog.get("subtitle"):
-            for pattern, replacement in phase_patterns.items():
-                match = re.search(pattern, prog["subtitle"], re.IGNORECASE)
+        
+        # Ordem de prioridade: fases mais específicas primeiro
+        phase_patterns = [
+            (r"Oitavas De Final", "Oitavas de Final", 1),
+            (r"Quartas De Final", "Quartas de Final", 2),
+            (r"Semifinal(?:is)?", "Semifinal", 3),
+            (r"Finais?", "Finais", 4),
+            (r"Final?", "Final", 5),
+            (r"Jogo (?:De )?Ida", "Jogo de Ida", 6),
+            (r"Jogo (?:De )?Volta", "Jogo de Volta", 7),
+            (r"Fase De Grupos", "Fase de Grupos", 8),
+            (r"(\d+)ª Rodada", None, 9),  # Tratamento especial
+        ]
+        
+        for field in ["title", "subtitle"]:
+            if not prog.get(field):
+                continue
+            
+            found_phases = []
+            text = prog[field]
+            
+            # Encontra todas as fases no texto
+            for pattern, replacement, priority in phase_patterns:
+                match = re.search(pattern, text, re.IGNORECASE)
                 if match:
-                    if callable(replacement):
-                        prog["phase"] = replacement(match)
+                    if replacement is None:  # Caso especial para rodadas
+                        phase_text = f"{match.group(1)}ª Rodada"
                     else:
-                        prog["phase"] = replacement
-                    prog["subtitle"] = re.sub(
-                        r"\s?-?\s?" + pattern + r"\s?-?\s?", "", prog["subtitle"], flags=re.IGNORECASE
+                        phase_text = replacement
+                    
+                    found_phases.append({
+                        "text": phase_text,
+                        "priority": priority,
+                        "match": match,
+                        "pattern": pattern
+                    })
+            
+            # Se encontrou fases neste campo, processa e para
+            if found_phases:
+                # Estratégia 1: Se há "Jogo de Ida/Volta" + outra fase, combina
+                ida_volta = next((p for p in found_phases if "Jogo de" in p["text"]), None)
+                other_phase = next((p for p in found_phases if "Jogo de" not in p["text"]), None)
+                
+                if ida_volta and other_phase:
+                    # Combina as duas fases: "Oitavas de Final - Jogo de Ida"
+                    prog["phase"] = f"{other_phase['text']} - {ida_volta['text']}"
+                    
+                    # Remove ambos os padrões do campo
+                    for phase in found_phases:
+                        text = re.sub(
+                            r"\s?-?\s?" + phase["pattern"], 
+                            "", 
+                            text, 
+                            flags=re.IGNORECASE
+                        )
+                else:
+                    # Estratégia 2: Usa a fase de maior prioridade (menor número)
+                    selected_phase = min(found_phases, key=lambda x: x["priority"])
+                    prog["phase"] = selected_phase["text"]
+                    
+                    # Remove apenas o padrão selecionado
+                    text = re.sub(
+                        r"\s?-?\s?" + selected_phase["pattern"], 
+                        "", 
+                        text, 
+                        flags=re.IGNORECASE
                     )
-                    break
+                
+                # Limpa espaços extras e traços soltos
+                text = re.sub(r"\s+-\s+", " - ", text.strip())
+                text = re.sub(r"^\s*-\s*|\s*-\s*$", "", text).strip()
+                prog[field] = text
+                
+                # Para aqui - não processa o outro campo
+                break
+        
+        return prog
 
+    def _extract_location(self, prog: Dict) -> Dict:
+        """
+        Extrai localidades do subtitle e as adiciona ao final da phase.
+        Localidades seguem o formato: "Cidade, País" ou "- Cidade, País" ou apenas "País"
+        """
+        if not prog.get("subtitle"):
+            return prog
+        
+        subtitle = prog["subtitle"]
+        
+        # Padrões para detectar localidades:
+        # 1. " - Cidade, País" ou " - País"
+        # 2. "Cidade,País" (sem espaço após vírgula)
+        location_patterns = [
+            r"\s*-\s*([A-ZÀ-Ú][^-]+,\s*[A-ZÀ-Ú][^-]+)$",   # " - Tóquio, Japão"
+            r"\s*-\s*([A-ZÀ-Ú][^-]+,[A-ZÀ-Ú][^-]+)$",      # " - Tóquio, Japão" (sem espaço)
+            r"^([A-ZÀ-Ú][^-,]+,\s*[A-ZÀ-Ú][^-,]+)$",       # "Szombathely, Hungria"
+            r"^([A-ZÀ-Ú][^-,]+,[A-ZÀ-Ú][^-,]+)$",          # "Szombathely,Hungria" (sem espaço)
+        ]
+        
+        location = None
+        cleaned_subtitle = subtitle
+        
+        for pattern in location_patterns:
+            match = re.search(pattern, subtitle)
+            if match:
+                location = match.group(1).strip()
+                
+                # Formata a localidade: garante espaço após vírgula
+                if "," in location:
+                    parts = [part.strip() for part in location.split(",")]
+                    location = ", ".join(parts)
+                
+                # Remove a localidade do subtitle
+                cleaned_subtitle = re.sub(pattern, "", subtitle).strip()
+                break
+        
+        if location:
+            # Se o subtitle ficou vazio, mantém só a localidade formatada
+            if not cleaned_subtitle:
+                prog["subtitle"] = location
+                not_phase = True
+            else:
+                prog["subtitle"] = cleaned_subtitle
+                not_phase = False
+            
+            # Adiciona localidade ao final da phase
+            if not not_phase:
+                if prog.get("phase"):
+                    prog["phase"] = f"{prog['phase']} - {location}"
+                else:
+                    prog["phase"] = location
+        
         return prog
 
     def _detect_live_status(self, prog: Dict) -> Dict:
@@ -220,12 +326,17 @@ class EPGProcessor:
         for pattern in rerun_patterns:
             if prog.get("title") and re.search(pattern, prog["title"], re.IGNORECASE):
                 prog["rerun"] = True
-                prog["title"] = re.sub(pattern, "", prog["title"], flags=re.IGNORECASE)
-                prog["live"] = (
-                    "reprise"
-                    if pattern in ["- Reprise", " - Reapresentação"]
-                    else prog["live"]
-                )
+                if "Premiere Retrô" in prog.get("title"):
+                    prog["title"] = re.sub(r'\s*\d{4}', '', prog["subtitle"]).strip()
+                    prog["subtitle"] = ""
+                    prog["live"] = "Retrô"
+                else:
+                    prog["title"] = re.sub(pattern, "", prog["title"], flags=re.IGNORECASE)
+                    prog["live"] = (
+                        "reprise"
+                        if pattern in ["- Reprise", " - Reapresentação"]
+                        else prog["live"]
+                    )
                 break
 
         return prog
@@ -254,7 +365,24 @@ class EPGProcessor:
             # Remove sufixos desnecessários
             if prog.get("subtitle"):
                 prog["subtitle"] = re.sub(r"\s?-?\s?Globoplay", "", prog["subtitle"])
-        
+            
+            # Trazer mais dados dos jogos
+            pattern = r'^[A-Za-zÀ-ÿ0-9\s]+ x [A-Za-zÀ-ÿ0-9\s]+$'
+            match_name = prog.get("subtitle")
+            if match_name != None:
+                if re.match(pattern, match_name):
+                    searcher = ScheduleSearcher(prog["start_time"], use_cache=True)
+                    teams = prog["subtitle"].split(" x ")
+
+                    r = searcher.get_match_by_teams(
+                        date_ref=prog["start_time"],
+                        home_team=teams[0],
+                        away_team=teams[1]
+                    )
+                    
+                    if len(r) > 0:
+                        prog["phase"] = r["phase"]
+                        
         elif 'x sports' in channel.lower():
             if prog["subtitle"]:
                 prog["description"] = prog["subtitle"]
@@ -318,6 +446,7 @@ class EPGProcessor:
                     prog["title"] = f'{temp["title"]}: {r["subtitle"]}'
                     prog["phase"] = r["phase"]
                     prog["description"] = f'{r["description"]}. {prog["description"]}'
+                    prog["live"] = True
         
             if prog.get("title").strip().lower() in [s.lower() for s in SESSOES_FILMES]:
                 prog["title"] = f'{prog["title"]}: {prog["subtitle"]}'
@@ -383,8 +512,8 @@ class EPGProcessor:
 
         if (
             any(
-                ch in channel
-                for ch in ["sportv", "premiere", "combate", "ge-tv", "band sports", "globo sp_local"]
+                ch in channel.lower()
+                for ch in ["sportv", "premiere", "combate", "ge-tv", "band sports", "globo sp_local", "x sports_local"]
             )
             and mapped
         ):
@@ -516,13 +645,11 @@ class EPGProcessor:
             prog["title"] = f"{prog['title']}: {prog['subtitle']}"
             prog["subtitle"] = f"{prog.get('phase') or ''}{event_date_str}".strip()
             prog["phase"] = None
-            prog["event_date"] = None
 
         # 4. Preenche subtítulo vazio com dados contextuais
         if not prog["subtitle"] and (prog.get("event_date") or prog.get("phase")):
             prog["subtitle"] = f"{prog.get('phase') or ''}{event_date_str}".strip()
             prog["phase"] = None
-            prog["event_date"] = None
 
         # 5. Formata descrição
         prog["description"] = self._format_description(

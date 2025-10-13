@@ -125,8 +125,7 @@ class EPGWriter:
             elif prog.get("premiere"):
                 ET.SubElement(programme, "premiere")
             elif (
-                prog.get("live") == True
-                or prog.get("live") == "Estreia"
+                prog.get("live") == "Estreia"
                 or prog.get("live") == "Inédito"
                 or prog.get("live") == "Destaques + Estreia"
             ):
