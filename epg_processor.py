@@ -165,8 +165,8 @@ class EPGProcessor:
             (r"Oitavas De Final", "Oitavas de Final", 1),
             (r"Quartas De Final", "Quartas de Final", 2),
             (r"Semifinal(?:is)?", "Semifinal", 3),
-            (r"Finais?", "Finais", 4),
-            (r"Final?", "Final", 5),
+            (r"Finais", "Finais", 4),
+            (r"Final", "Final", 5),
             (r"Jogo (?:De )?Ida", "Jogo de Ida", 6),
             (r"Jogo (?:De )?Volta", "Jogo de Volta", 7),
             (r"Fase De Grupos", "Fase de Grupos", 8),
@@ -391,6 +391,59 @@ class EPGProcessor:
             if not prog["subtitle"] and " - " in prog["title"]:
                 prog["title"], prog["subtitle"] = prog["title"].split(" - ", 1)
 
+        # Record
+        elif "record sp" in channel.lower():
+            prog["description"] = prog["subtitle"]
+            # Captura dados de jogos de futebol
+            if ('Campeonato Brasileiro' in prog.get("title") or 'Campeonato Paulista' in prog.get("title")) and spa is True:
+                searcher = ScheduleSearcher(prog["start_time"], use_cache=True)
+
+                teams = prog["title"].split(" - ")[1].split(" x ")
+
+                r = searcher.get_match_by_teams(
+                    date_ref=prog["start_time"],
+                    home_team=teams[0],
+                    away_team=teams[1]
+                )
+                
+                if len(r) > 0:
+                    prog["title"] = r["title"]
+
+                    temp = self._map_competitions_programs(prog, prog["channel"])
+                    prog["description"] = f'{r["description"]}. {prog["description"]}'
+                    prog["subtitle"] = None
+                    prog["title"] = f'{temp["title"]}: {r["subtitle"]}'
+                    prog["phase"] = r["phase"]
+                    prog["live"] = True
+            elif "Inteligência e Fé" in prog["title"]:
+                prog["subtitle"] = "Inteligência e Fé"
+                prog["title"] = "Programação IURD"
+            elif "Palavra Amiga" in prog["title"]:
+                prog["subtitle"] = "Palavra Amiga"
+                prog["title"] = "Programação IURD"
+            elif "Programa do Templo" in prog["title"]:
+                prog["subtitle"] = "Programa do Templo"
+                prog["title"] = "Programação IURD"
+            elif "Programação Universal - IURD" in prog["title"]:
+                prog["subtitle"] = re.sub(r"^\s*Programação Universal\s*-\s*IURD\s?\-?\s?", "", prog["title"])
+                prog["title"] = "Programação IURD"
+            else:
+                prog["subtitle"] = None
+
+        # Band
+        elif "band sp" in channel.lower():
+            prog["description"] = prog["subtitle"]
+            
+            match = re.match(r'^(INFOMERCIAL|RELIGIOSO)\s*-\s*(.+)$', prog["title"], re.IGNORECASE)
+            if match:
+                prog["title"] = match.group(1).upper()
+                prog["subtitle"] = match.group(2).strip()
+            elif "Igreja Cristo Para As Nações" in prog["title"] or "Igreja Universal do Reino de Deus" in prog["title"] or "Show da Fé" in prog["title"] or "Oração do dia com Profeta Vinícius Iracet" in prog["title"]:
+                prog["subtitle"] = prog["title"]
+                prog["title"] = "RELIGIOSO"
+            else:   
+                prog["subtitle"] = None
+
         # Globo
         elif "globo sp" in channel.lower():
             SESSOES_FILMES = [
@@ -438,7 +491,7 @@ class EPGProcessor:
                 searcher = ScheduleSearcher(prog["start_time"], ["Brasil", "Corinthians", "Palmeiras", "São Paulo", "Santos"], use_cache=True)
 
                 r = searcher.get_match(prog["start_time"], "Globo")
-                print(len(r))
+                
                 if len(r) > 0:
                     prog["title"] = r["title"]
 
