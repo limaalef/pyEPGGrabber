@@ -4,13 +4,16 @@
 competitions:
   competitions:
   Amistoso De Futebol: [Amistoso, "football/soccer"]
+  Amistoso internacional: [Amistoso Internacional, "sports (general)"]
   Amistoso Internacional De Basquete: [Amistoso Internacional de Basquete, "sports (general)"]
   Amistoso Internacional De Futsal: [Amistoso de Futsal, "team sports"]
   Amistoso Internacional De Futsal Feminino: [Amistoso de Futsal Feminino, "team sports"]
+  Amistoso Internacional Feminino De Futsal: [Amistoso de Futsal Feminino, "team sports"]
   Amistoso Internacional De Futebol: [Amistoso Internacional, "football/soccer"]
   Amistoso Internacional De Futebol Feminino: [Amistoso Futebol Feminino, "football/soccer"]
   Amistoso Internacional Feminino De Futebol: [Amistoso Futebol Feminino, "football/soccer"]
   Amistoso Internacional Masculini De Futebol: [Amistoso Internacional, "football/soccer"]
+  Amistosos da Seleção Brasileira: [Amistoso Seleção Brasileira, "football/soccer"]
   Arena Cross: [Arena Cross, "sports (general)"]
   Arena Freestyle: [Arena Freestyle, sports (general)]
   Baú Do Esporte: [Baú do Esporte, "sports (general)"]
@@ -41,6 +44,7 @@ programs:
   Vai Que Cola: Vai que Cola
   Tô De Graça: Tô de Graça
   Todo Mundo Odeia O Chris: Todo Mundo Odeia o Chris
+  Especial Campeonato Alemão: Bundesliga Highlights Show
   Especial Campeonato Espanhol: LaLiga Highlights
   Especial Campeonato Italiano: Serie A Full Impact
 

@@ -510,7 +510,7 @@ class EPGProcessor:
                 prog["subtitle"] = ""
 
         # GloboNews
-        elif "globonews" in channel or "news" in channel:
+        elif "globonews" in channel.lower() or "news" in channel.lower():
             prog["genre"] = "news/current affairs (general)"
 
             # Padroniza "Jornal GloboNews"
@@ -522,7 +522,7 @@ class EPGProcessor:
                     prog["subtitle"] = None
 
         # Viva, Multishow
-        elif "viva" in channel or "multishow" in channel:
+        elif "viva" in channel.lower() or "multishow" in channel.lower():
             # TVZ sempre maiúsculo
             if prog.get("title"):
                 prog["title"] = prog["title"].replace("Tvz", "TVZ")
@@ -535,20 +535,36 @@ class EPGProcessor:
                     prog["subtitle"] = re.sub(r"Capítulo\s+\d+", "", prog["subtitle"])
 
         # Canais SBT
-        elif "sbt" in channel or any(
-            s in channel for s in ["silvio", "saudade", "pop"]
-        ):
-            # Champions League
-            if prog.get("title") and "Champions League" in prog["title"]:
-                prog["title"] = "UEFA Champions League"
-                if prog.get("subtitle"):
-                    prog["subtitle"] = re.sub(
-                        r"Champions League\s*-?\s*", "", prog["subtitle"]
-                    )
+        elif "sbt" in channel.lower():
+        # Champions League
+            #print("\n\n", prog["title"], prog["subtitle"], prog["description"])
+            #if prog.get("title") and "Sudamericana" in prog["title"]:
+            #    prog["title"] = "CONMEBOL Sul-Americana"
+            if prog.get("title") == prog.get("subtitle"):
+                prog["subtitle"] = prog["description"]
+                prog["description"] = ""
 
-            # Copa Sul-Americana
-            if prog.get("title") and "Sudamericana" in prog["title"]:
-                prog["title"] = "CONMEBOL Sul-Americana"
+                if ('Sul-americana' in prog.get("title") or 'Champions League' in prog.get("title")) and spa is True:
+                    print(prog["subtitle"])
+                    searcher = ScheduleSearcher(prog["start_time"], use_cache=True)
+
+                    teams = prog["subtitle"].split(" - ")[1].split(" x ")
+
+                    r = searcher.get_match_by_teams(
+                        date_ref=prog["start_time"],
+                        home_team=teams[0],
+                        away_team=teams[1]
+                    )
+                    
+                    if len(r) > 0:
+                        prog["title"] = r["title"]
+
+                        temp = self._map_competitions_programs(prog, prog["channel"])
+                        prog["description"] = f'{r["description"]}. {prog["description"]}'
+                        prog["subtitle"] = None
+                        prog["title"] = f'{temp["title"]}: {r["subtitle"]}'
+                        prog["phase"] = r["phase"]
+                        prog["live"] = True
 
         return prog
 
@@ -711,6 +727,8 @@ class EPGProcessor:
 
         # 6. Aplica marcadores de transmissão (ao vivo, inédito, etc)
         prog = self._apply_broadcast_markers(prog)
+        
+        prog["title"] = prog["title"].replace(" - -", " - ").replace(" X ", " x ")
 
         return prog
 
