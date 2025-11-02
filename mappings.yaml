@@ -20,6 +20,10 @@ competitions:
   Boxe: [Boxe, "sports (general)"]
   Boxe Internacional: [Boxe Internacional, "sports (general)"]
   Cblol: [CBLOL, "sports (general)"]
+  Campeonato Alemão: [Bundesliga, "football/soccer"]
+  Campeonato Americano Fem: [NWSL, "football/soccer"]
+  Campeonato Americano Feminino: [NWSL, "football/soccer"]
+  Campeonato Alemão De Futebol: [Bundesliga, "football/soccer"]
 
 programs:
   Troca De Passes: Troca de Passes
@@ -46,7 +50,21 @@ programs:
   Todo Mundo Odeia O Chris: Todo Mundo Odeia o Chris
   Especial Campeonato Alemão: Bundesliga Highlights Show
   Especial Campeonato Espanhol: LaLiga Highlights
+  Especial Campeonato Inglês: Premier League Review
   Especial Campeonato Italiano: Serie A Full Impact
+  Comédia Na Madruga: Comédia na Madrugada
+  Comédia Na Madruga I: Comédia na Madrugada
+  Comédia Na Madruga II: Comédia na Madrugada
+  Comédia Na Madruga III: Comédia na Madrugada
+  Bora Pro Jogo: Bora pro Jogo
+  O Dono Do Lar - A saga da barata: O Dono do Lar - A saga da barata
+  Domingão Coo Huck: Domingão com Huck
+  Domingão Do Huck: Domingão com Huck
+  Encontro Com Patrícia Poeta: Encontro com Patrícia Poeta
+  Vale a Pena Ver De Novo: Vale a Pena Ver de Novo
+  Vale a Pena: Vale a Pena Ver de Novo
+  Sessao Da Tarde: Sessão da Tarde
+
 
 genres:
   Jornalismo: "news/current affairs (general)"
