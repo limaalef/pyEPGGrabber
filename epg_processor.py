@@ -73,7 +73,7 @@ class EPGProcessor:
 
         # Processa nomes que artigo após fim do texto separado por virgula
         processed = self._normalize_inverted_title(processed)
-
+        
         # Detecta se é ao vivo, inédito ou reprise
         processed = self._detect_live_status(processed)
 
@@ -177,6 +177,8 @@ class EPGProcessor:
             (r"Final", "Final", 5),
             (r"Jogo (?:De )?Ida", "Jogo de Ida", 6),
             (r"Jogo (?:De )?Volta", "Jogo de Volta", 7),
+            (r" Ida", "Jogo de Ida", 7),
+            (r"Volta", "Jogo de Volta", 7),
             (r"Fase De Grupos", "Fase de Grupos", 8),
             (r"(\d+)ª Rodada", None, 9),  # Tratamento especial
         ]
@@ -217,7 +219,7 @@ class EPGProcessor:
                     # Remove ambos os padrões do campo
                     for phase in found_phases:
                         text = re.sub(
-                            r"\s?-?\s?" + phase["pattern"], 
+                            r"\s?\:?-?\s?" + phase["pattern"], 
                             "", 
                             text, 
                             flags=re.IGNORECASE
@@ -229,15 +231,15 @@ class EPGProcessor:
                     
                     # Remove apenas o padrão selecionado
                     text = re.sub(
-                        r"\s?-?\s?" + selected_phase["pattern"], 
+                        r"\s?\:?-?\s?" + selected_phase["pattern"], 
                         "", 
                         text, 
                         flags=re.IGNORECASE
                     )
                 
                 # Limpa espaços extras e traços soltos
-                text = re.sub(r"\s+-\s+", " - ", text.strip())
-                text = re.sub(r"^\s*-\s*|\s*-\s*$", "", text).strip()
+                text = re.sub(r"\s+-\s+|\s*\:+\s*", " - ", text.strip())
+                text = re.sub(r"^\s*-\s*|\s*-\s*$|\s*\:+\s*", "", text).strip()
                 prog[field] = text
                 
                 # Para aqui - não processa o outro campo
@@ -335,8 +337,11 @@ class EPGProcessor:
             if prog.get("title") and re.search(pattern, prog["title"], re.IGNORECASE):
                 prog["rerun"] = True
                 if "Premiere Retrô" in prog.get("title"):
-                    prog["title"] = re.sub(r'\s*\d{4}', '', prog["subtitle"]).strip()
-                    prog["subtitle"] = ""
+                    if "copa do brasil" in prog.get("subtitle"):
+                        prog["title"] = "Copa do Brasil"
+                    else:
+                        prog["title"] = "Campeonato Brasileiro"
+                    prog["subtitle"] = re.sub(r'\s*\d{4}', '', prog["subtitle"]).strip()
                     prog["live"] = "Retrô"
                 else:
                     prog["title"] = re.sub(pattern, "", prog["title"], flags=re.IGNORECASE)
@@ -364,6 +369,29 @@ class EPGProcessor:
         
         return prog
 
+    def _normalize_repeated_name(self, prog: Dict) -> Dict:
+        # Divide em duas partes: antes e depois do ":"
+        partes = prog.get("title").split(":", 1)
+        if len(partes) < 2:
+            return prog
+        
+        before, after = [p.strip() for p in partes]
+        
+        # Divide a parte antes do ":" em confronto e competição
+        subpartes = before.split(" - ", 1)
+        if len(subpartes) < 2:
+            return prog
+        
+        match_before, competition = [s.strip() for s in subpartes]
+        match_after = after.strip()
+        
+        # Compara confrontos ignorando maiúsculas e espaços
+        if match_before.lower() == match_after.lower():
+            prog["title"] = competition
+            prog["subtitle"] = match_before
+            
+        return prog
+   
     def _process_by_channel(self, prog: Dict, channel: str) -> Dict:
         """Processamento específico por canal"""
         if 'local' in channel.lower():
@@ -376,8 +404,16 @@ class EPGProcessor:
             prog["description"] = prog["subtitle"]
             prog["subtitle"] = ""
 
+        if "4k" in channel.lower():
+            title_before = prog.get("title")
+            # Corrige os programas mal formatados do Vivo Play
+            prog = self._normalize_repeated_name(prog)
+
+            if title_before != prog.get("title"):
+                prog["live"] = True
+
         # SporTV, Premiere, Combate
-        if any(ch in channel for ch in ["sportv", "premiere", "combate", "ge-tv"]):
+        if any(ch in channel.lower() for ch in ["sportv", "premiere", "combate", "ge-tv"]):
             prog["genre"] = "sports (general)"
 
             # Separa titulo se subtitulo vazio
@@ -423,13 +459,16 @@ class EPGProcessor:
             match_name = prog.get("subtitle")
             if match_name != None:
                 if re.match(pattern, match_name):
+                    prog["event_processor_type"] = "football"
                     searcher = ScheduleSearcher(prog["start_time"], use_cache=True)
                     teams = prog["subtitle"].split(" x ")
+                    prog["home_team"] = teams[0]
+                    prog["away_team"] = teams[1]
 
                     r = searcher.get_match_by_teams(
                         date_ref=prog["start_time"],
-                        home_team=teams[0],
-                        away_team=teams[1]
+                        home_team=prog["home_team"],
+                        away_team=prog["away_team"]
                     )
 
                     if len(r) > 0:
@@ -439,12 +478,29 @@ class EPGProcessor:
                         prog["phase"] = r.get("phase")
                         prog["stadium"] = r.get("stadium")
                         prog["live"] = True
-                        prog["event_processor_type"] = "football"
+                else:
+                    prog["event_processor_type"] = "sports"
 
         # Record
         elif "record sp" in channel.lower():
+            IRUD_PROGRAMS = {
+                "Inteligência e Fé": "Inteligência e Fé",
+                "Palavra Amiga": "Palavra Amiga",
+                "Programa do Templo": "Programa do Templo",
+            }
+
+            for key, program_name in IRUD_PROGRAMS.items():
+                if key in prog["title"]:
+                    prog["subtitle"] = program_name
+                    prog["title"] = "Programação IURD"
+                    break
+
+            if "Programação Universal - IURD" in prog["title"]:
+                prog["subtitle"] = re.sub(r"^\s*Programação Universal\s*-\s*IURD\s?\-?\s?", "", prog["title"])
+                prog["title"] = "Programação IURD"
+
             # Captura dados de jogos de futebol
-            if ('Campeonato Brasileiro' in prog.get("title") or 'Campeonato Paulista' in prog.get("title")) and spa is True:
+            elif ('Campeonato Brasileiro' in prog.get("title") or 'Campeonato Paulista' in prog.get("title")) and spa is True:
                 searcher = ScheduleSearcher(prog["start_time"], use_cache=True)
 
                 teams = prog["title"].split(" - ")[1].split(" x ")
@@ -464,28 +520,20 @@ class EPGProcessor:
                     prog["live"] = True
                     prog["event_processor_type"] = "football" 
 
-            elif "Inteligência e Fé" in prog["title"]:
-                prog["subtitle"] = "Inteligência e Fé"
-                prog["title"] = "Programação IURD"
-            elif "Palavra Amiga" in prog["title"]:
-                prog["subtitle"] = "Palavra Amiga"
-                prog["title"] = "Programação IURD"
-            elif "Programa do Templo" in prog["title"]:
-                prog["subtitle"] = "Programa do Templo"
-                prog["title"] = "Programação IURD"
-            elif "Programação Universal - IURD" in prog["title"]:
-                prog["subtitle"] = re.sub(r"^\s*Programação Universal\s*-\s*IURD\s?\-?\s?", "", prog["title"])
-                prog["title"] = "Programação IURD"
-            else:
-                prog["subtitle"] = None
-
         # Band
         elif "band sp" in channel.lower():
+            RELIGIOSOS = [
+                "Igreja Cristo Para As Nações",
+                "Igreja Universal do Reino de Deus",
+                "Show da Fé",
+                "Oração do dia com Profeta Vinícius Iracet",
+            ]
+            
             match = re.match(r'^(INFOMERCIAL|RELIGIOSO)\s*-\s*(.+)$', prog["title"], re.IGNORECASE)
             if match:
                 prog["title"] = match.group(1).upper()
                 prog["subtitle"] = match.group(2).strip()
-            elif "Igreja Cristo Para As Nações" in prog["title"] or "Igreja Universal do Reino de Deus" in prog["title"] or "Show da Fé" in prog["title"] or "Oração do dia com Profeta Vinícius Iracet" in prog["title"]:
+            elif any(nome in prog["title"] for nome in RELIGIOSOS):
                 prog["subtitle"] = prog["title"]
                 prog["title"] = "RELIGIOSO"
             else:   
@@ -599,33 +647,29 @@ class EPGProcessor:
 
         # Canais SBT
         elif "sbt" in channel.lower():
-            if prog.get("title") == prog.get("subtitle"):
-                prog["subtitle"] = prog["description"]
-                prog["description"] = ""
+            if ('Sul-americana' in prog.get("title") or 'Champions League' in prog.get("title")) and spa is True:
+                searcher = ScheduleSearcher(prog["start_time"], use_cache=True)
 
-                if ('Sul-americana' in prog.get("title") or 'Champions League' in prog.get("title")) and spa is True:
-                    searcher = ScheduleSearcher(prog["start_time"], use_cache=True)
+                try:
+                    teams = prog["subtitle"].split(" - ")[1].split(" x ")
 
-                    try:
-                        teams = prog["subtitle"].split(" - ")[1].split(" x ")
+                    r = searcher.get_match_by_teams(
+                        date_ref=prog["start_time"],
+                        home_team=teams[0],
+                        away_team=teams[1]
+                    )
+                    
+                    if len(r) > 0:
+                        prog["competition"] = r.get("competition")
+                        prog["home_team"] = r.get("home_team")
+                        prog["away_team"] = r.get("away_team")
+                        prog["phase"] = r.get("phase")
+                        prog["stadium"] = r.get("stadium")
+                        prog["live"] = True
+                        prog["event_processor_type"] = "football"
 
-                        r = searcher.get_match_by_teams(
-                            date_ref=prog["start_time"],
-                            home_team=teams[0],
-                            away_team=teams[1]
-                        )
-                        
-                        if len(r) > 0:
-                            prog["competition"] = r.get("competition")
-                            prog["home_team"] = r.get("home_team")
-                            prog["away_team"] = r.get("away_team")
-                            prog["phase"] = r.get("phase")
-                            prog["stadium"] = r.get("stadium")
-                            prog["live"] = True
-                            prog["event_processor_type"] = "football"
-
-                    except (IndexError, AttributeError, KeyError):
-                        teams = []
+                except (IndexError, AttributeError, KeyError):
+                    teams = []
 
         return prog
 
@@ -653,11 +697,11 @@ class EPGProcessor:
         if (
             any(
                 ch in channel.lower()
-                for ch in ["sportv", "premiere", "combate", "ge-tv", "band sports", "globo sp_local", "x sports_local"]
+                for ch in ["sportv", "premiere", "combate", "ge-tv", "band sports", "globo sp_local", "x sports_local", "espn"]
             )
             and mapped
         ):
-            if prog.get("live") != True:
+            if prog.get("live") != True and prog.get("live") != "Retrô":
                 prog["live"] = "VT"
 
         # Tenta mapear programa
@@ -784,7 +828,10 @@ class EPGProcessor:
             prog["phase"] = None
         
         elif prog["event_processor_type"] == "sports":
-            prog["title"] = f"{prog['title']}: {prog['subtitle']}"
+            if prog['subtitle'] is not None:
+                prog["title"] = f"{prog['title']}: {prog['subtitle']}"
+            else:
+                prog["title"] = f"{prog['title']}"
             prog['subtitle'] = None
         
         elif prog["event_processor_type"] == "series":
